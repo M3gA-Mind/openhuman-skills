@@ -1,6 +1,6 @@
 // Tool: telegram-get-chats
 // Get chat list with optional filtering.
-import { getChats } from '../db-helpers';
+import { getChats } from '../db/helpers';
 import type { ChatType } from '../types';
 
 /**

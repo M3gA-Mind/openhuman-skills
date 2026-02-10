@@ -1,6 +1,6 @@
 // Tool: telegram-get-contacts
 // Get contacts/users with optional filtering.
-import { getContacts } from '../db-helpers';
+import { getContacts } from '../db/helpers';
 
 /**
  * Get contacts tool definition.

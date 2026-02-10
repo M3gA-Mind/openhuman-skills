@@ -61,6 +61,48 @@ export function createSetupHandlers(deps: TelegramSetupDeps): {
       });
     }
 
+    // If TDLib already has auth state from a previous session, start at the right step
+    if (s.authState === 'waitCode') {
+      return {
+        step: {
+          id: 'code',
+          title: 'Enter Verification Code',
+          description:
+            'A verification code has been sent to your Telegram app or SMS. Enter it below.',
+          fields: [
+            {
+              name: 'code',
+              type: 'text',
+              label: 'Verification Code',
+              description: '5-digit code from Telegram',
+              required: true,
+            },
+          ],
+        },
+      };
+    }
+
+    if (s.authState === 'waitPassword') {
+      return {
+        step: {
+          id: 'password',
+          title: 'Two-Factor Authentication',
+          description: s.passwordHint
+            ? `Enter your 2FA password. Hint: ${s.passwordHint}`
+            : 'Enter your 2FA password.',
+          fields: [
+            {
+              name: 'password',
+              type: 'password',
+              label: '2FA Password',
+              description: 'Your Telegram 2FA password',
+              required: true,
+            },
+          ],
+        },
+      };
+    }
+
     return {
       step: {
         id: 'phone',

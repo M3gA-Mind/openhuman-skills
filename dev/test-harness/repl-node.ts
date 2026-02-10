@@ -948,6 +948,69 @@ function cmdEmit(G: G, rest: string): void {
   }
 }
 
+// ─── Tab Completion ──────────────────────────────────────────────
+
+const ALL_COMMANDS = [
+  'help', 'tools', 'call', 'init', 'start', 'stop', 'cron', 'session',
+  'setup', 'oauth', 'options', 'option', 'state', 'db', 'env', 'backend',
+  'socket', 'emit', 'disconnect', 'tdlib', 'reload', 'exit', 'quit',
+];
+
+function buildCompleter(getCtx: () => { G: G }): (line: string) => [string[], string] {
+  return (line: string): [string[], string] => {
+    const trimmed = line.trimStart();
+    const spaceIdx = trimmed.indexOf(' ');
+
+    if (spaceIdx === -1) {
+      // Completing the command name
+      const hits = ALL_COMMANDS.filter(cmd => cmd.startsWith(trimmed.toLowerCase()));
+      return [hits.length ? hits : ALL_COMMANDS, trimmed];
+    }
+
+    // Completing arguments after the command
+    const cmd = trimmed.substring(0, spaceIdx).toLowerCase();
+    const argPart = trimmed.substring(spaceIdx + 1);
+
+    switch (cmd) {
+      case 'call': {
+        const toolNames = getTools(getCtx().G).map(t => t.name);
+        const hits = toolNames.filter(n => n.startsWith(argPart));
+        return [hits.length ? hits : toolNames, argPart];
+      }
+      case 'cron': {
+        const scheduleIds = Object.keys(getLiveState().cronSchedules);
+        const hits = scheduleIds.filter(id => id.startsWith(argPart));
+        return [hits.length ? hits : scheduleIds, argPart];
+      }
+      case 'option': {
+        if (argPart.includes(' ')) return [[], argPart];
+        try {
+          const fn = getCtx().G.onListOptions as (() => { options: Array<{ name: string }> }) | undefined;
+          if (typeof fn === 'function') {
+            const result = fn();
+            const names = result.options.map(o => o.name);
+            const hits = names.filter(n => n.startsWith(argPart));
+            return [hits.length ? hits : names, argPart];
+          }
+        } catch { /* ignore */ }
+        return [[], argPart];
+      }
+      case 'session': {
+        const subs = ['start', 'end'];
+        const hits = subs.filter(s => s.startsWith(argPart));
+        return [hits.length ? hits : subs, argPart];
+      }
+      case 'tdlib': {
+        const subs = ['send', 'receive'];
+        const hits = subs.filter(s => s.startsWith(argPart));
+        return [hits.length ? hits : subs, argPart];
+      }
+      default:
+        return [[], argPart];
+    }
+  };
+}
+
 // ─── Main ──────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -1123,7 +1186,18 @@ async function main(): Promise<void> {
   }
 
   // REPL loop
-  console.log(`\n${c.dim}Type 'help' for commands.${c.reset}`);
+  console.log(`\n${c.dim}Type 'help' for commands. Tab completion available.${c.reset}`);
+
+  // Close the initial readline (used for skill selection & setup prompts)
+  // and create a new one with tab completion for the interactive REPL
+  rl.close();
+
+  const completer = buildCompleter(() => ctx);
+  const replRl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    completer,
+  });
 
   const prompt = `${c.cyan}${skillId}${c.reset}${c.dim}>${c.reset} `;
   let running = true;
@@ -1131,7 +1205,7 @@ async function main(): Promise<void> {
   while (running) {
     let line: string;
     try {
-      line = await rl.question(prompt);
+      line = await replRl.question(prompt);
     } catch {
       // EOF or error
       break;
@@ -1155,7 +1229,7 @@ async function main(): Promise<void> {
           break;
 
         case 'call':
-          await cmdCall(ctx.G, rest, rl);
+          await cmdCall(ctx.G, rest, replRl);
           break;
 
         case 'init':
@@ -1179,11 +1253,11 @@ async function main(): Promise<void> {
           break;
 
         case 'setup':
-          await runSetupWizard(ctx.G, rl);
+          await runSetupWizard(ctx.G, replRl);
           break;
 
         case 'oauth':
-          await runOAuthFlow(ctx.G, ctx.manifest, rl, backendUrl, jwtToken);
+          await runOAuthFlow(ctx.G, ctx.manifest, replRl, backendUrl, jwtToken);
           break;
 
         case 'options':
@@ -1353,6 +1427,11 @@ async function main(): Promise<void> {
     } catch (e) {
       console.log(`${c.red}Error: ${e}${c.reset}`);
     }
+
+    // Visual separator between command output and next prompt
+    if (running) {
+      console.log(`\n${c.dim}${'─'.repeat(40)}${c.reset}`);
+    }
   }
 
   // Clean exit
@@ -1366,7 +1445,7 @@ async function main(): Promise<void> {
     }
   }
   ctx.cleanup();
-  rl.close();
+  replRl.close();
   console.log(`${c.dim}Bye!${c.reset}`);
 }
 

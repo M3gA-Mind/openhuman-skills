@@ -1,6 +1,6 @@
 // Tool: telegram-get-chat-stats
 // Get statistics for a specific chat.
-import { getChatStats, getContacts } from '../db-helpers';
+import { getChatStats, getContacts } from '../db/helpers';
 
 /**
  * Get chat stats tool definition.

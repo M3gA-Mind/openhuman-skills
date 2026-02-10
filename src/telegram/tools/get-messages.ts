@@ -1,7 +1,7 @@
 // Tool: telegram-get-messages
 // Get messages from a chat with optional filtering.
 import { isSensitiveText } from '../../helpers';
-import { getMessages } from '../db-helpers';
+import { getMessages } from '../db/helpers';
 
 /**
  * Get messages tool definition.

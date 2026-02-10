@@ -46,11 +46,50 @@ skills/                          # Repo root
 
 ### Skill Structure
 
-Each skill is a directory under `src/` containing:
+Each skill is a directory under `src/` with a modular file layout. Keep concerns separated into dedicated files and folders:
 
-- **index.ts** — TypeScript source with lifecycle hooks, tools, and business logic
-- **manifest.json** — Metadata (id, name, version, runtime, platforms, setup config)
-- \***\*tests**/\*\* _(optional)_ — Unit tests
+```
+src/my-skill/
+├── manifest.json           # Metadata (id, name, version, runtime, platforms, setup, events, entity schema)
+├── index.ts                # Entry point — lifecycle hooks, imports all modules, wires everything together
+├── types.ts                # All TypeScript type/interface definitions for the skill
+├── state.ts          # Shared mutable state via globalThis pattern
+├── setup.ts                # Multi-step setup wizard (onSetupStart, onSetupSubmit logic)
+├── sync.ts                 # Initial data sync and periodic refresh logic
+├── update-handlers.ts      # Event/update dispatch handlers (if skill has real-time updates)
+├── db/
+│   ├── schema.ts           # SQLite CREATE TABLE statements, indexes, migrations
+│   └── helpers.ts          # Upsert, query, and data extraction utilities
+├── api/
+│   ├── index.ts            # Barrel re-export of all API functions
+│   ├── auth.ts             # Authentication API calls
+│   ├── messages.ts         # Messaging API calls
+│   ├── chats.ts            # Chat/channel API calls
+│   └── ...                 # One file per API domain
+├── tools/
+│   ├── index.ts            # Barrel re-export of all tool definitions
+│   ├── send-message.ts     # Individual tool definition + execute function
+│   ├── get-chats.ts
+│   └── ...                 # One file per tool (or per logical group)
+├── package.json            # (optional) Per-skill npm dependencies
+└── __tests__/
+    └── test-my-skill.ts    # Unit tests
+```
+
+**Key principles:**
+
+- **`index.ts` is the orchestrator** — it imports all modules, implements lifecycle hooks (`init`, `start`, `stop`, etc.), assembles the `tools` array, and exposes helper functions on `globalThis`
+- **`state.ts` owns the state** — defines the state interface, initializes defaults, and registers `globalThis.getSkillState()`
+- **`setup.ts` owns the setup wizard** — all `onSetupStart`/`onSetupSubmit` logic lives here, imported by `index.ts`
+- **`sync.ts` owns data synchronization** — initial sync, periodic refresh, progress tracking
+- **`types.ts` owns all types** — shared interfaces, API response types, database row types
+- **`db/schema.ts`** — all `CREATE TABLE` / `CREATE INDEX` statements
+- **`db/helpers.ts`** — upsert functions, query helpers, data extraction/parsing utilities
+- **`api/`** — one file per API domain, each exporting pure functions that make API calls; barrel-exported from `api/index.ts`
+- **`tools/`** — one file per tool (or per logical group), each exporting a `ToolDefinition`; barrel-exported from `tools/index.ts`
+- **`update-handlers.ts`** — dispatches incoming events/updates to the right handlers (optional, for real-time integrations)
+
+For simple skills that don't need all of these, you can start with just `manifest.json`, `index.ts`, and `state.ts`, then split into more files as complexity grows.
 
 ### manifest.json
 
@@ -393,7 +432,11 @@ npx tsc -p tsconfig.test.json
 
 ## Creating a New Skill
 
-1. Create directory: `mkdir src/my-skill`
+1. Create directory structure:
+
+```bash
+mkdir -p src/my-skill/{api,tools,db,__tests__}
+```
 
 2. Create `manifest.json`:
 
@@ -405,11 +448,22 @@ npx tsc -p tsconfig.test.json
   "entry": "index.js",
   "version": "1.0.0",
   "description": "What this skill does",
-  "platforms": ["windows", "macos", "linux"]
+  "platforms": ["windows", "macos", "linux"],
+  "setup": { "required": true, "label": "Configure My Skill" }
 }
 ```
 
-3. Create `index.ts` with lifecycle hooks and tools
+3. Create the core files in this order:
+
+   - `types.ts` — all type definitions
+   - `state.ts` — state interface + globalThis registration
+   - `db/schema.ts` — CREATE TABLE statements + globalThis registration
+   - `db/helpers.ts` — upsert/query functions + globalThis registration
+   - `api/*.ts` — API functions per domain + `api/index.ts` barrel export
+   - `tools/*.ts` — one tool per file + `tools/index.ts` barrel export
+   - `setup.ts` — setup wizard steps
+   - `sync.ts` — data sync logic + globalThis registration
+   - `index.ts` — lifecycle hooks, imports all modules, assembles `tools` array
 
 4. (Optional) Add per-skill dependencies by creating a `package.json` in your skill directory:
 
@@ -432,7 +486,7 @@ yarn validate
 yarn test src/my-skill/__tests__/test-my-skill.ts
 ```
 
-See [`src/example-skill/`](src/example-skill/) for a complete working example demonstrating all bridge APIs, lifecycle hooks, setup wizard, options, and tools.
+See [`src/telegram/`](src/telegram/) for the reference implementation demonstrating the full modular pattern with API layer, 50+ tools, database schema/helpers, setup wizard, sync, and state management.
 
 ## Key Constraints
 
@@ -467,157 +521,354 @@ See [`src/example-skill/`](src/example-skill/) for a complete working example de
 
 ## Common Patterns
 
-### Skill State Management (Recommended Pattern)
+### Skill State Management (`state.ts`)
 
-For skills with tools that need to access mutable state, use the **globalThis state pattern**. This ensures state is accessible in both the production QuickJS runtime and the test harness.
-
-**1. Create a `skill-state.ts` module:**
+All skills must use the **globalThis state pattern** for cross-module state access. This ensures state works in both the bundled esbuild IIFE (production) and the test harness.
 
 ```typescript
-// skill-state.ts
-import type { SkillConfig } from './types';
+// state.ts
+import type { MyConfig } from './types';
 
 export interface MySkillState {
-  config: SkillConfig;
-  counter: number;
+  config: MyConfig;
   isRunning: boolean;
+  cache: { items: Map<string, unknown> };
 }
 
-// Extend globalThis type
 declare global {
-  function getSkillState(): MySkillState;
-  var __skillState: MySkillState;
+  function getMySkillState(): MySkillState;
+  var __mySkillState: MySkillState;
 }
 
-// Initialize state on module load
-const state: MySkillState = {
-  config: { serverUrl: '', interval: 30 },
-  counter: 0,
+const skillState: MySkillState = {
+  config: { apiKey: '', region: 'us' },
   isRunning: false,
+  cache: { items: new Map() },
 };
-globalThis.__skillState = state;
+globalThis.__mySkillState = skillState;
 
-// Expose getter function globally
-globalThis.getSkillState = function (): MySkillState {
-  return globalThis.__skillState;
+globalThis.getMySkillState = function (): MySkillState {
+  return globalThis.__mySkillState;
 };
 ```
 
-**2. Access state via `globalThis.getSkillState()` everywhere:**
+**Why this pattern:** Bundled skills use esbuild IIFE format (module-local scopes) and the test harness uses `new Function()`. Accessing state via `globalThis.getMySkillState()` works in both environments.
+
+### Types (`types.ts`)
+
+All type definitions for the skill live in a single `types.ts` file:
 
 ```typescript
-// In index.ts
-import './skill-state';
+// types.ts
 
-// Initializes state
-
-function init(): void {
-  const s = globalThis.getSkillState();
-  const saved = state.get('config');
-  if (saved) s.config = { ...s.config, ...saved };
+// Config stored in state.set('config', ...)
+export interface MyConfig {
+  apiKey: string;
+  region: string;
+  syncEnabled: boolean;
 }
 
-function doPing(): void {
-  const s = globalThis.getSkillState();
-  s.counter++;
-  // ... use s.config, s.counter, etc.
+// API response types
+export interface ApiItem {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+// Database row types
+export interface ItemRow {
+  id: string;
+  title: string;
+  content: string;
+  synced_at: string;
 }
 ```
 
-**3. Tools access state the same way:**
+### Database Schema (`db/schema.ts`)
+
+All `CREATE TABLE` and `CREATE INDEX` statements in one place:
 
 ```typescript
-// In tools/get-stats.ts
-import '../skill-state';
+// db/schema.ts
 
-// Ensures initialization
+export function initializeSchema(): void {
+  db.exec(`CREATE TABLE IF NOT EXISTS items (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT,
+    content_type TEXT DEFAULT 'text',
+    synced_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`, []);
 
-export const getStatsTool: ToolDefinition = {
-  name: 'get-stats',
-  execute(): string {
-    const s = globalThis.getSkillState();
-    return JSON.stringify({ counter: s.counter });
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_items_synced_at ON items(synced_at)`, []);
+
+  db.exec(`CREATE TABLE IF NOT EXISTS sync_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`, []);
+}
+
+// Register on globalThis for access from index.ts
+declare global {
+  var initializeMySkillSchema: () => void;
+}
+globalThis.initializeMySkillSchema = initializeSchema;
+```
+
+### Database Helpers (`db/helpers.ts`)
+
+Upsert, query, and data extraction utilities:
+
+```typescript
+// db/helpers.ts
+
+export function upsertItem(item: ApiItem): void {
+  db.exec(
+    `INSERT INTO items (id, title, content, synced_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET title=?, content=?, synced_at=?`,
+    [item.id, item.title, item.content, item.updatedAt,
+     item.title, item.content, item.updatedAt]
+  );
+}
+
+export function getItemById(id: string): ItemRow | null {
+  return db.get('SELECT * FROM items WHERE id = ?', [id]) as ItemRow | null;
+}
+
+export function searchItems(query: string, limit: number = 20): ItemRow[] {
+  return db.all(
+    'SELECT * FROM items WHERE title LIKE ? OR content LIKE ? LIMIT ?',
+    [`%${query}%`, `%${query}%`, limit]
+  ) as ItemRow[];
+}
+
+// Register on globalThis
+declare global {
+  var mySkillDb: {
+    upsertItem: typeof upsertItem;
+    getItemById: typeof getItemById;
+    searchItems: typeof searchItems;
+  };
+}
+globalThis.mySkillDb = { upsertItem, getItemById, searchItems };
+```
+
+### API Layer (`api/`)
+
+One file per API domain with pure functions. Barrel-export from `api/index.ts`:
+
+```typescript
+// api/items.ts
+export function fetchItems(apiKey: string, cursor?: string): { items: ApiItem[]; nextCursor?: string } {
+  const url = `https://api.example.com/items${cursor ? `?cursor=${cursor}` : ''}`;
+  const response = net.fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    timeout: 15000,
+  });
+  if (response.status >= 400) throw new Error(`API error: ${response.status}`);
+  return JSON.parse(response.body);
+}
+
+// api/index.ts — barrel export
+export { fetchItems, createItem, updateItem } from './items';
+export { authenticate, refreshToken } from './auth';
+```
+
+### Tools (`tools/`)
+
+One file per tool (or per logical group). Each exports a `ToolDefinition`:
+
+```typescript
+// tools/search-items.ts
+import type { ToolDefinition } from '../../types/globals';
+
+export const searchItemsTool: ToolDefinition = {
+  name: 'search-items',
+  description: 'Search items by keyword',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search query' },
+      limit: { type: 'number', description: 'Max results (default 20)' },
+    },
+    required: ['query'],
+  },
+  execute(args: Record<string, unknown>): string {
+    const query = args.query as string;
+    const limit = (args.limit as number) || 20;
+    const results = globalThis.mySkillDb.searchItems(query, limit);
+    return JSON.stringify({ success: true, results, count: results.length });
   },
 };
+
+// tools/index.ts — barrel export
+export { searchItemsTool } from './search-items';
+export { getItemTool } from './get-item';
+export { createItemTool } from './create-item';
 ```
 
-**4. Expose helper functions on globalThis for tools:**
+### Setup Wizard (`setup.ts`)
+
+Multi-step configuration wizard, imported by `index.ts`:
 
 ```typescript
-// In index.ts - expose functions for tools to call
-const _g = globalThis as Record<string, unknown>;
-_g.doPing = doPing;
-_g.publishState = publishState;
-
-// In tools that call these functions
-(globalThis as { doPing?: () => void }).doPing?.();
-```
-
-**Why this pattern?**
-
-- Bundled skills use esbuild IIFE format, which creates module-local scopes
-- The test harness uses `new Function()` which has its own scope limitations
-- Accessing state via `globalThis.getSkillState()` works in both environments
-- The production Rust QuickJS runtime handles this correctly via `execute_script`
-
-### Config Persistence (Simple Pattern)
-
-For simple skills without tools that need state access:
-
-```typescript
-interface SkillConfig {
-  serverUrl: string;
-  interval: number;
+// setup.ts
+export function onSetupStart(): SetupStartResult {
+  const s = globalThis.getMySkillState();
+  // If already have a key, show it masked
+  return {
+    step: {
+      id: 'credentials',
+      title: 'API Credentials',
+      description: 'Enter your API key',
+      fields: [
+        { name: 'apiKey', type: 'password', label: 'API Key', required: true },
+        { name: 'region', type: 'select', label: 'Region',
+          options: [{ label: 'US', value: 'us' }, { label: 'EU', value: 'eu' }] },
+      ],
+    },
+  };
 }
 
-const CONFIG: SkillConfig = { serverUrl: '', interval: 30 };
+export function onSetupSubmit(args: { stepId: string; values: Record<string, unknown> }): SetupSubmitResult {
+  if (args.stepId === 'credentials') {
+    const apiKey = args.values.apiKey as string;
+    if (!apiKey) return { status: 'error', errors: [{ field: 'apiKey', message: 'Required' }] };
+    // Validate key works
+    try {
+      const result = api.authenticate(apiKey);
+      const s = globalThis.getMySkillState();
+      s.config.apiKey = apiKey;
+      s.config.region = (args.values.region as string) || 'us';
+      state.set('config', s.config);
+      return { status: 'complete' };
+    } catch (e) {
+      return { status: 'error', errors: [{ field: 'apiKey', message: 'Invalid API key' }] };
+    }
+  }
+  return { status: 'error', errors: [{ field: '', message: 'Unknown step' }] };
+}
+```
+
+### Sync Logic (`sync.ts`)
+
+Initial data sync and periodic refresh:
+
+```typescript
+// sync.ts
+export function performInitialSync(onProgress?: (msg: string) => void): void {
+  const s = globalThis.getMySkillState();
+  onProgress?.('Fetching items...');
+
+  let cursor: string | undefined;
+  let totalSynced = 0;
+  do {
+    const result = api.fetchItems(s.config.apiKey, cursor);
+    for (const item of result.items) {
+      globalThis.mySkillDb.upsertItem(item);
+      totalSynced++;
+    }
+    cursor = result.nextCursor;
+    onProgress?.(`Synced ${totalSynced} items...`);
+  } while (cursor);
+
+  db.exec(`INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_sync', ?)`,
+    [new Date().toISOString()]);
+}
+
+// Register on globalThis
+declare global {
+  var mySkillSync: { performInitialSync: typeof performInitialSync };
+}
+globalThis.mySkillSync = { performInitialSync };
+```
+
+### Entry Point (`index.ts`)
+
+The orchestrator that wires everything together:
+
+```typescript
+// index.ts — import order matters
+import './skill-state';        // 1. State first
+import './db/schema';          // 2. DB schema registration
+import './db/helpers';         // 3. DB helpers registration
+import './sync';               // 4. Sync registration
+import * as api from './api';  // 5. API layer
+import { onSetupStart, onSetupSubmit } from './setup';
+import { searchItemsTool, getItemTool, createItemTool } from './tools';
 
 function init(): void {
-  const saved = state.get('config') as Partial<SkillConfig> | null;
-  if (saved) {
-    CONFIG.serverUrl = saved.serverUrl ?? CONFIG.serverUrl;
-    CONFIG.interval = saved.interval ?? CONFIG.interval;
+  globalThis.initializeMySkillSchema();
+  const s = globalThis.getMySkillState();
+  const saved = state.get('config');
+  if (saved) s.config = { ...s.config, ...(saved as Partial<MyConfig>) };
+}
+
+function start(): void {
+  const s = globalThis.getMySkillState();
+  if (s.config.apiKey) {
+    globalThis.mySkillSync.performInitialSync();
+    cron.register('refresh', '0 */5 * * * *'); // every 5 min
   }
+  s.isRunning = true;
+  publishState();
 }
 
 function stop(): void {
-  state.set('config', CONFIG);
+  const s = globalThis.getMySkillState();
+  s.isRunning = false;
+  cron.unregister('refresh');
+  state.set('config', s.config);
 }
-```
 
-### API Integration
-
-```typescript
-function callApi(endpoint: string, data?: unknown): unknown {
-  try {
-    const response = net.fetch(`https://api.example.com${endpoint}`, {
-      method: data ? 'POST' : 'GET',
-      headers: { Authorization: `Bearer ${CONFIG.apiKey}`, 'Content-Type': 'application/json' },
-      body: data ? JSON.stringify(data) : undefined,
-      timeout: 10000,
-    });
-
-    if (response.status >= 400) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    return JSON.parse(response.body);
-  } catch (e) {
-    console.error(`API call failed: ${e}`);
-    throw e;
+function onCronTrigger(scheduleId: string): void {
+  if (scheduleId === 'refresh') {
+    globalThis.mySkillSync.performInitialSync();
+    publishState();
   }
 }
+
+function publishState(): void {
+  const s = globalThis.getMySkillState();
+  state.setPartial({
+    connection_status: s.isRunning ? 'connected' : 'disconnected',
+    is_initialized: true,
+  });
+}
+
+// Expose for tools
+const _g = globalThis as Record<string, unknown>;
+_g.publishState = publishState;
+
+tools = [searchItemsTool, getItemTool, createItemTool];
 ```
+
+### globalThis Registration Summary
+
+Every module that needs cross-module access registers on `globalThis`:
+
+| Module | Registers | Purpose |
+| --- | --- | --- |
+| `state.ts` | `globalThis.getMySkillState()` | State access |
+| `db/schema.ts` | `globalThis.initializeMySkillSchema()` | Schema creation |
+| `db/helpers.ts` | `globalThis.mySkillDb.*` | DB operations |
+| `sync.ts` | `globalThis.mySkillSync.*` | Sync operations |
+| `index.ts` | `globalThis.publishState()` etc. | Lifecycle helpers for tools |
 
 ### State Publishing
 
+Always publish state to the frontend via `state.setPartial()`:
+
 ```typescript
 function publishState(): void {
+  const s = globalThis.getMySkillState();
   state.setPartial({
-    status: isHealthy ? 'healthy' : 'down',
-    lastCheck: new Date().toISOString(),
-    uptime: calculateUptime(),
-    errorCount: FAIL_COUNT,
+    connection_status: s.isRunning ? 'connected' : 'disconnected',
+    is_initialized: true,
+    lastSync: db.get("SELECT value FROM sync_state WHERE key = 'last_sync'", [])?.value ?? null,
+    itemCount: (db.get('SELECT COUNT(*) as count FROM items', []) as { count: number })?.count ?? 0,
   });
 }
 ```
@@ -626,17 +877,13 @@ function publishState(): void {
 
 ```typescript
 function onCronTrigger(scheduleId: string): void {
-  if (scheduleId === 'health-check') {
+  if (scheduleId === 'refresh') {
     try {
-      const result = checkHealth();
-      if (!result.ok && CONFIG.notifyOnError) {
-        platform.notify('Health Check Failed', result.message);
-      }
+      globalThis.mySkillSync.performInitialSync();
+      publishState();
     } catch (e) {
-      console.error(`Health check error: ${e}`);
-      if (CONFIG.notifyOnError) {
-        platform.notify('Health Check Error', String(e));
-      }
+      console.error(`Sync error: ${e}`);
+      platform.notify('Sync Failed', String(e));
     }
   }
 }

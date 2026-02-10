@@ -13,7 +13,7 @@ import type {
   TdMessageContent,
   TdUserFull,
   TdUserStatus,
-} from './types';
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Utility Functions

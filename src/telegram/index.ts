@@ -3,9 +3,8 @@
 // Provides tools for Telegram API access with native TDLib bindings.
 // Import skill state (initializes globalThis.getTelegramSkillState)
 // registers globalThis.initializeTelegramSchema
-import './db-helpers';
-// Import modules to register globalThis functions
-import './db-schema';
+import './db/helpers';
+import './db/schema';
 import './skill-state';
 import type { AuthorizationState } from './skill-state';
 // registers globalThis.telegramDispatchUpdate
