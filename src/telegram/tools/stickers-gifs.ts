@@ -17,10 +17,7 @@ export const sendStickerToolDefinition: ToolDefinition = {
         type: 'string',
         description: 'The sticker file ID (required). Get from search-stickers.',
       },
-      reply_to_message_id: {
-        type: 'string',
-        description: 'Message ID to reply to (optional)',
-      },
+      reply_to_message_id: { type: 'string', description: 'Message ID to reply to (optional)' },
     },
     required: ['chat_id', 'sticker_id'],
   },
@@ -63,18 +60,14 @@ export const sendStickerToolDefinition: ToolDefinition = {
  */
 export const sendGifToolDefinition: ToolDefinition = {
   name: 'send-gif',
-  description:
-    'Send a GIF/animation to a Telegram chat by URL or file ID.',
+  description: 'Send a GIF/animation to a Telegram chat by URL or file ID.',
   input_schema: {
     type: 'object',
     properties: {
       chat_id: { type: 'string', description: 'The chat ID to send the GIF to (required)' },
       url: { type: 'string', description: 'The GIF URL or file ID (required)' },
       caption: { type: 'string', description: 'Optional caption for the GIF' },
-      reply_to_message_id: {
-        type: 'string',
-        description: 'Message ID to reply to (optional)',
-      },
+      reply_to_message_id: { type: 'string', description: 'Message ID to reply to (optional)' },
     },
     required: ['chat_id', 'url'],
   },
@@ -124,10 +117,7 @@ export const searchStickersToolDefinition: ToolDefinition = {
   input_schema: {
     type: 'object',
     properties: {
-      query: {
-        type: 'string',
-        description: 'Emoji or keyword to search for stickers (required)',
-      },
+      query: { type: 'string', description: 'Emoji or keyword to search for stickers (required)' },
       limit: {
         type: 'string',
         description: 'Maximum number of stickers to return (default: 10, max: 20)',
@@ -158,12 +148,7 @@ export const searchStickersToolDefinition: ToolDefinition = {
         };
       });
 
-      return JSON.stringify({
-        success: true,
-        query,
-        count: stickers.length,
-        stickers,
-      });
+      return JSON.stringify({ success: true, query, count: stickers.length, stickers });
     } catch (err) {
       return JSON.stringify({
         success: false,

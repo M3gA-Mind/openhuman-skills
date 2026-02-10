@@ -23,11 +23,7 @@ export const getChatFoldersToolDefinition: ToolDefinition = {
         excluded_chat_count: (folder.excluded_chat_ids as number[])?.length ?? 0,
       }));
 
-      return JSON.stringify({
-        success: true,
-        count: folders.length,
-        folders,
-      });
+      return JSON.stringify({ success: true, count: folders.length, folders });
     } catch (err) {
       return JSON.stringify({
         success: false,
@@ -112,7 +108,10 @@ export const createChatFolderToolDefinition: ToolDefinition = {
 
       return JSON.stringify({
         success: true,
-        folder: { id: (result as { chat_folder_info?: { id?: number } }).chat_folder_info?.id, title },
+        folder: {
+          id: (result as { chat_folder_info?: { id?: number } }).chat_folder_info?.id,
+          title,
+        },
       });
     } catch (err) {
       return JSON.stringify({
@@ -196,19 +195,14 @@ export const editChatFolderToolDefinition: ToolDefinition = {
         folder.include_contacts = args.include_contacts === 'true';
       if (args.include_non_contacts !== undefined)
         folder.include_non_contacts = args.include_non_contacts === 'true';
-      if (args.include_groups !== undefined)
-        folder.include_groups = args.include_groups === 'true';
+      if (args.include_groups !== undefined) folder.include_groups = args.include_groups === 'true';
       if (args.include_channels !== undefined)
         folder.include_channels = args.include_channels === 'true';
       if (args.include_bots !== undefined) folder.include_bots = args.include_bots === 'true';
 
       await api.editChatFolder(s.client, parseInt(folderId, 10), folder);
 
-      return JSON.stringify({
-        success: true,
-        folder_id: folderId,
-        action: 'edited',
-      });
+      return JSON.stringify({ success: true, folder_id: folderId, action: 'edited' });
     } catch (err) {
       return JSON.stringify({
         success: false,
@@ -241,11 +235,7 @@ export const deleteChatFolderToolDefinition: ToolDefinition = {
 
       await api.deleteChatFolder(s.client, parseInt(folderId, 10));
 
-      return JSON.stringify({
-        success: true,
-        folder_id: folderId,
-        action: 'deleted',
-      });
+      return JSON.stringify({ success: true, folder_id: folderId, action: 'deleted' });
     } catch (err) {
       return JSON.stringify({
         success: false,

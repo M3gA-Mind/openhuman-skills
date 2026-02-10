@@ -8,10 +8,7 @@ export async function getChatFolders(
   client: TdLibClient
 ): Promise<{ chat_folders?: Record<string, unknown>[]; main_chat_list_position?: number }> {
   const response = await client.send({ '@type': 'getChatFolders' });
-  return response as {
-    chat_folders?: Record<string, unknown>[];
-    main_chat_list_position?: number;
-  };
+  return response as { chat_folders?: Record<string, unknown>[]; main_chat_list_position?: number };
 }
 
 /**
@@ -21,10 +18,7 @@ export async function createChatFolder(
   client: TdLibClient,
   folder: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  const response = await client.send({
-    '@type': 'createChatFolder',
-    folder,
-  });
+  const response = await client.send({ '@type': 'createChatFolder', folder });
   return response as Record<string, unknown>;
 }
 

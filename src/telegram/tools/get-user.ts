@@ -10,9 +10,7 @@ export const getUserToolDefinition: ToolDefinition = {
   description: 'Get basic information about a Telegram user by their user ID.',
   input_schema: {
     type: 'object',
-    properties: {
-      user_id: { type: 'string', description: 'The user ID to look up (required)' },
-    },
+    properties: { user_id: { type: 'string', description: 'The user ID to look up (required)' } },
     required: ['user_id'],
   },
   async execute(args: Record<string, unknown>): Promise<string> {
@@ -63,9 +61,7 @@ export const getUserProfileToolDefinition: ToolDefinition = {
     'Get the full profile for a Telegram user, including bio, common group count, and other extended info.',
   input_schema: {
     type: 'object',
-    properties: {
-      user_id: { type: 'string', description: 'The user ID to look up (required)' },
-    },
+    properties: { user_id: { type: 'string', description: 'The user ID to look up (required)' } },
     required: ['user_id'],
   },
   async execute(args: Record<string, unknown>): Promise<string> {
@@ -146,7 +142,8 @@ export const searchPublicChatToolDefinition: ToolDefinition = {
       if (username.startsWith('@')) username = username.slice(1);
 
       const result = await api.searchPublicChat(s.client, username);
-      if (!result) return JSON.stringify({ success: false, error: 'No result found for that username' });
+      if (!result)
+        return JSON.stringify({ success: false, error: 'No result found for that username' });
 
       return JSON.stringify({ success: true, chat: result });
     } catch (err) {

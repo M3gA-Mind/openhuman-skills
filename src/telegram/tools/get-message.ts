@@ -1,7 +1,7 @@
 // Tools: get-message, get-message-link
 // Single message retrieval and link generation.
-import { isSensitiveText } from '../../helpers';
 import * as api from '../api';
+import { isSensitiveText } from '../../helpers';
 
 /**
  * Get a single message by chat and message ID.
@@ -36,7 +36,10 @@ export const getMessageToolDefinition: ToolDefinition = {
       let text: string | null = null;
       if (msg.content?.['@type'] === 'messageText') {
         text = (msg.content as { text: { text: string } }).text.text;
-      } else if ('caption' in msg.content && (msg.content as { caption?: { text: string } }).caption) {
+      } else if (
+        'caption' in msg.content &&
+        (msg.content as { caption?: { text: string } }).caption
+      ) {
         text = (msg.content as { caption: { text: string } }).caption.text;
       }
 

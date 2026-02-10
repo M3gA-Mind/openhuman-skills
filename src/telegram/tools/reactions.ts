@@ -30,12 +30,7 @@ export const addReactionToolDefinition: ToolDefinition = {
       if (!messageId) return JSON.stringify({ success: false, error: 'message_id is required' });
       if (!emoji) return JSON.stringify({ success: false, error: 'emoji is required' });
 
-      await api.addMessageReaction(
-        s.client,
-        parseInt(chatId, 10),
-        parseInt(messageId, 10),
-        emoji
-      );
+      await api.addMessageReaction(s.client, parseInt(chatId, 10), parseInt(messageId, 10), emoji);
 
       return JSON.stringify({
         success: true,

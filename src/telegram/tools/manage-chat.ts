@@ -75,11 +75,7 @@ export const getChatInviteLinkToolDefinition: ToolDefinition = {
         memberLimit
       );
 
-      return JSON.stringify({
-        success: true,
-        chat_id: chatId,
-        invite_link: result.invite_link,
-      });
+      return JSON.stringify({ success: true, chat_id: chatId, invite_link: result.invite_link });
     } catch (err) {
       return JSON.stringify({
         success: false,

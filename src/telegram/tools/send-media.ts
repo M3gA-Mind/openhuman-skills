@@ -14,10 +14,7 @@ export const sendPhotoToolDefinition: ToolDefinition = {
       chat_id: { type: 'string', description: 'The chat ID to send the photo to (required)' },
       url: { type: 'string', description: 'The photo URL (required)' },
       caption: { type: 'string', description: 'Optional photo caption' },
-      reply_to_message_id: {
-        type: 'string',
-        description: 'Message ID to reply to (optional)',
-      },
+      reply_to_message_id: { type: 'string', description: 'Message ID to reply to (optional)' },
     },
     required: ['chat_id', 'url'],
   },
@@ -67,16 +64,10 @@ export const sendDocumentToolDefinition: ToolDefinition = {
   input_schema: {
     type: 'object',
     properties: {
-      chat_id: {
-        type: 'string',
-        description: 'The chat ID to send the document to (required)',
-      },
+      chat_id: { type: 'string', description: 'The chat ID to send the document to (required)' },
       url: { type: 'string', description: 'The document URL (required)' },
       caption: { type: 'string', description: 'Optional document caption' },
-      reply_to_message_id: {
-        type: 'string',
-        description: 'Message ID to reply to (optional)',
-      },
+      reply_to_message_id: { type: 'string', description: 'Message ID to reply to (optional)' },
     },
     required: ['chat_id', 'url'],
   },

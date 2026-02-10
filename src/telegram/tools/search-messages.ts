@@ -1,7 +1,7 @@
 // Tools: search-chat-messages, search-messages-global
 // Search messages within a chat or across all chats.
-import { isSensitiveText } from '../../helpers';
 import * as api from '../api';
+import { isSensitiveText } from '../../helpers';
 
 /**
  * Search messages within a specific chat.
@@ -16,10 +16,7 @@ export const searchChatMessagesToolDefinition: ToolDefinition = {
     properties: {
       chat_id: { type: 'string', description: 'The chat ID to search in (required)' },
       query: { type: 'string', description: 'Search query text (required)' },
-      limit: {
-        type: 'string',
-        description: 'Maximum number of results (default: 20, max: 50)',
-      },
+      limit: { type: 'string', description: 'Maximum number of results (default: 20, max: 50)' },
       from_message_id: {
         type: 'string',
         description: 'Start searching from this message ID (for pagination)',
@@ -38,9 +35,7 @@ export const searchChatMessagesToolDefinition: ToolDefinition = {
       if (!query) return JSON.stringify({ success: false, error: 'query is required' });
 
       const limit = Math.min(parseInt((args.limit as string) || '20', 10), 50);
-      const fromMessageId = args.from_message_id
-        ? parseInt(args.from_message_id as string, 10)
-        : 0;
+      const fromMessageId = args.from_message_id ? parseInt(args.from_message_id as string, 10) : 0;
 
       const messages = await api.searchChatMessages(
         s.client,
@@ -68,12 +63,7 @@ export const searchChatMessagesToolDefinition: ToolDefinition = {
         })
         .filter(msg => showSensitive || !isSensitiveText(msg.text || ''));
 
-      return JSON.stringify({
-        success: true,
-        query,
-        count: formatted.length,
-        messages: formatted,
-      });
+      return JSON.stringify({ success: true, query, count: formatted.length, messages: formatted });
     } catch (err) {
       return JSON.stringify({
         success: false,
@@ -95,10 +85,7 @@ export const searchMessagesGlobalToolDefinition: ToolDefinition = {
     type: 'object',
     properties: {
       query: { type: 'string', description: 'Search query text (required)' },
-      limit: {
-        type: 'string',
-        description: 'Maximum number of results (default: 20, max: 50)',
-      },
+      limit: { type: 'string', description: 'Maximum number of results (default: 20, max: 50)' },
     },
     required: ['query'],
   },
@@ -132,12 +119,7 @@ export const searchMessagesGlobalToolDefinition: ToolDefinition = {
         })
         .filter(msg => showSensitive || !isSensitiveText(msg.text || ''));
 
-      return JSON.stringify({
-        success: true,
-        query,
-        count: formatted.length,
-        messages: formatted,
-      });
+      return JSON.stringify({ success: true, query, count: formatted.length, messages: formatted });
     } catch (err) {
       return JSON.stringify({
         success: false,

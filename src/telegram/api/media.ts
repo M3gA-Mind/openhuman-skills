@@ -141,10 +141,7 @@ export async function getStickerSet(
   setId: string
 ): Promise<Record<string, unknown> | null> {
   try {
-    const response = await client.send({
-      '@type': 'getStickerSet',
-      set_id: parseInt(setId, 10),
-    });
+    const response = await client.send({ '@type': 'getStickerSet', set_id: parseInt(setId, 10) });
     return response as unknown as Record<string, unknown>;
   } catch {
     return null;

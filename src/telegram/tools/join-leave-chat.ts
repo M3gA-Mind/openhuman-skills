@@ -11,9 +11,7 @@ export const joinChatToolDefinition: ToolDefinition = {
     'Join a Telegram chat by invite link (e.g., https://t.me/+abc123 or https://t.me/joinchat/abc123).',
   input_schema: {
     type: 'object',
-    properties: {
-      invite_link: { type: 'string', description: 'The chat invite link (required)' },
-    },
+    properties: { invite_link: { type: 'string', description: 'The chat invite link (required)' } },
     required: ['invite_link'],
   },
   async execute(args: Record<string, unknown>): Promise<string> {
@@ -22,17 +20,13 @@ export const joinChatToolDefinition: ToolDefinition = {
       if (!s.client) throw new Error('Telegram is not connected. Complete setup and log in first.');
 
       const inviteLink = args.invite_link as string;
-      if (!inviteLink)
-        return JSON.stringify({ success: false, error: 'invite_link is required' });
+      if (!inviteLink) return JSON.stringify({ success: false, error: 'invite_link is required' });
 
       const chat = await api.joinChatByInviteLink(s.client, inviteLink);
 
       return JSON.stringify({
         success: true,
-        chat: {
-          id: (chat as { id?: number }).id,
-          title: (chat as { title?: string }).title,
-        },
+        chat: { id: (chat as { id?: number }).id, title: (chat as { title?: string }).title },
       });
     } catch (err) {
       return JSON.stringify({
@@ -51,9 +45,7 @@ export const leaveChatToolDefinition: ToolDefinition = {
   description: 'Leave a Telegram group or channel by chat ID.',
   input_schema: {
     type: 'object',
-    properties: {
-      chat_id: { type: 'string', description: 'The chat ID to leave (required)' },
-    },
+    properties: { chat_id: { type: 'string', description: 'The chat ID to leave (required)' } },
     required: ['chat_id'],
   },
   async execute(args: Record<string, unknown>): Promise<string> {

@@ -12,10 +12,7 @@ export const sendMessageToolDefinition: ToolDefinition = {
     properties: {
       chat_id: { type: 'string', description: 'The chat ID to send the message to (required)' },
       text: { type: 'string', description: 'The message text to send (required)' },
-      reply_to_message_id: {
-        type: 'string',
-        description: 'Message ID to reply to (optional)',
-      },
+      reply_to_message_id: { type: 'string', description: 'Message ID to reply to (optional)' },
     },
     required: ['chat_id', 'text'],
   },
@@ -33,12 +30,7 @@ export const sendMessageToolDefinition: ToolDefinition = {
         ? parseInt(args.reply_to_message_id as string, 10)
         : undefined;
 
-      const message = await api.sendMessage(
-        s.client,
-        parseInt(chatId, 10),
-        text,
-        replyToMessageId
-      );
+      const message = await api.sendMessage(s.client, parseInt(chatId, 10), text, replyToMessageId);
 
       return JSON.stringify({
         success: true,

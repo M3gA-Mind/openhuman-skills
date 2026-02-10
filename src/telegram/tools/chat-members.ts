@@ -111,11 +111,7 @@ export const addChatMemberToolDefinition: ToolDefinition = {
         await api.addChatMembers(s.client, parseInt(chatId, 10), userIds);
       }
 
-      return JSON.stringify({
-        success: true,
-        chat_id: chatId,
-        added_count: userIds.length,
-      });
+      return JSON.stringify({ success: true, chat_id: chatId, added_count: userIds.length });
     } catch (err) {
       return JSON.stringify({
         success: false,
@@ -130,8 +126,7 @@ export const addChatMemberToolDefinition: ToolDefinition = {
  */
 export const banChatMemberToolDefinition: ToolDefinition = {
   name: 'ban-chat-member',
-  description:
-    'Ban (kick) a member from a Telegram group or channel. Requires admin privileges.',
+  description: 'Ban (kick) a member from a Telegram group or channel. Requires admin privileges.',
   input_schema: {
     type: 'object',
     properties: {
@@ -152,12 +147,7 @@ export const banChatMemberToolDefinition: ToolDefinition = {
 
       await api.banChatMember(s.client, parseInt(chatId, 10), parseInt(userId, 10));
 
-      return JSON.stringify({
-        success: true,
-        chat_id: chatId,
-        user_id: userId,
-        action: 'banned',
-      });
+      return JSON.stringify({ success: true, chat_id: chatId, user_id: userId, action: 'banned' });
     } catch (err) {
       return JSON.stringify({
         success: false,
@@ -273,12 +263,7 @@ export const promoteChatMemberToolDefinition: ToolDefinition = {
         },
       };
 
-      await api.setChatMemberStatus(
-        s.client,
-        parseInt(chatId, 10),
-        parseInt(userId, 10),
-        rights
-      );
+      await api.setChatMemberStatus(s.client, parseInt(chatId, 10), parseInt(userId, 10), rights);
 
       return JSON.stringify({
         success: true,
@@ -303,9 +288,7 @@ export const getChatAdminsToolDefinition: ToolDefinition = {
   description: 'Get the list of administrators for a Telegram group or channel.',
   input_schema: {
     type: 'object',
-    properties: {
-      chat_id: { type: 'string', description: 'The chat ID (required)' },
-    },
+    properties: { chat_id: { type: 'string', description: 'The chat ID (required)' } },
     required: ['chat_id'],
   },
   async execute(args: Record<string, unknown>): Promise<string> {
@@ -336,12 +319,7 @@ export const getChatAdminsToolDefinition: ToolDefinition = {
         };
       });
 
-      return JSON.stringify({
-        success: true,
-        chat_id: chatId,
-        count: admins.length,
-        admins,
-      });
+      return JSON.stringify({ success: true, chat_id: chatId, count: admins.length, admins });
     } catch (err) {
       return JSON.stringify({
         success: false,
@@ -446,11 +424,7 @@ export const setChatPermissionsToolDefinition: ToolDefinition = {
 
       await api.setChatPermissions(s.client, parseInt(chatId, 10), permissions);
 
-      return JSON.stringify({
-        success: true,
-        chat_id: chatId,
-        permissions,
-      });
+      return JSON.stringify({ success: true, chat_id: chatId, permissions });
     } catch (err) {
       return JSON.stringify({
         success: false,

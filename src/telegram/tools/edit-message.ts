@@ -36,11 +36,7 @@ export const editMessageToolDefinition: ToolDefinition = {
 
       return JSON.stringify({
         success: true,
-        message: {
-          id: message.id,
-          chat_id: message.chat_id,
-          edit_date: message.edit_date,
-        },
+        message: { id: message.id, chat_id: message.chat_id, edit_date: message.edit_date },
       });
     } catch (err) {
       return JSON.stringify({

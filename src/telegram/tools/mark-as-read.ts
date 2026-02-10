@@ -41,11 +41,7 @@ export const markAsReadToolDefinition: ToolDefinition = {
 
       await api.viewMessages(s.client, parseInt(chatId, 10), messageIds);
 
-      return JSON.stringify({
-        success: true,
-        chat_id: chatId,
-        marked_count: messageIds.length,
-      });
+      return JSON.stringify({ success: true, chat_id: chatId, marked_count: messageIds.length });
     } catch (err) {
       return JSON.stringify({
         success: false,

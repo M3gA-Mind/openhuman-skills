@@ -90,11 +90,7 @@ export async function addChatMembers(
   chatId: number,
   userIds: number[]
 ): Promise<void> {
-  await client.send({
-    '@type': 'addChatMembers',
-    chat_id: chatId,
-    user_ids: userIds,
-  });
+  await client.send({ '@type': 'addChatMembers', chat_id: chatId, user_ids: userIds });
 }
 
 /**

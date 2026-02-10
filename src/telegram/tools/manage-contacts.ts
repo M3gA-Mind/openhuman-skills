@@ -83,8 +83,7 @@ export const removeContactToolDefinition: ToolDefinition = {
  */
 export const blockUserToolDefinition: ToolDefinition = {
   name: 'block-user',
-  description:
-    'Block or unblock a Telegram user. Blocked users cannot send you messages.',
+  description: 'Block or unblock a Telegram user. Blocked users cannot send you messages.',
   input_schema: {
     type: 'object',
     properties: {

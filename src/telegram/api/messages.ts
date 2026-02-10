@@ -239,11 +239,7 @@ export async function unpinChatMessage(
   chatId: number,
   messageId: number
 ): Promise<void> {
-  await client.send({
-    '@type': 'unpinChatMessage',
-    chat_id: chatId,
-    message_id: messageId,
-  });
+  await client.send({ '@type': 'unpinChatMessage', chat_id: chatId, message_id: messageId });
 }
 
 /**

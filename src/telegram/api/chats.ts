@@ -139,10 +139,7 @@ export async function joinChatByInviteLink(
   client: TdLibClient,
   inviteLink: string
 ): Promise<Record<string, unknown>> {
-  const response = await client.send({
-    '@type': 'joinChatByInviteLink',
-    invite_link: inviteLink,
-  });
+  const response = await client.send({ '@type': 'joinChatByInviteLink', invite_link: inviteLink });
   return response as Record<string, unknown>;
 }
 
@@ -214,9 +211,6 @@ export async function setChatPermissions(
   await client.send({
     '@type': 'setChatPermissions',
     chat_id: chatId,
-    permissions: {
-      '@type': 'chatPermissions',
-      ...permissions,
-    },
+    permissions: { '@type': 'chatPermissions', ...permissions },
   });
 }

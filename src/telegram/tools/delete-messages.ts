@@ -39,11 +39,7 @@ export const deleteMessagesToolDefinition: ToolDefinition = {
 
       await api.deleteMessages(s.client, parseInt(chatId, 10), messageIds, revoke);
 
-      return JSON.stringify({
-        success: true,
-        deleted_count: messageIds.length,
-        revoked: revoke,
-      });
+      return JSON.stringify({ success: true, deleted_count: messageIds.length, revoked: revoke });
     } catch (err) {
       return JSON.stringify({
         success: false,

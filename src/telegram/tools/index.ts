@@ -1,83 +1,73 @@
 // Export all Telegram tool definitions.
-
 // Existing tools
+// Group admin tools
+import {
+  addChatMemberToolDefinition,
+  banChatMemberToolDefinition,
+  getChatAdminsToolDefinition,
+  getChatMembersToolDefinition,
+  promoteChatMemberToolDefinition,
+  setChatPermissionsToolDefinition,
+} from './chat-members';
+import {
+  createChannelToolDefinition,
+  createGroupToolDefinition,
+  createPrivateChatToolDefinition,
+} from './create-chat';
+import { deleteMessagesToolDefinition } from './delete-messages';
+import { editMessageToolDefinition } from './edit-message';
+// Folder management tools
+import {
+  createChatFolderToolDefinition,
+  deleteChatFolderToolDefinition,
+  editChatFolderToolDefinition,
+  getChatFoldersToolDefinition,
+} from './folders';
+import { forwardMessagesToolDefinition } from './forward-messages';
+// Chat management tools
+import { getChatToolDefinition } from './get-chat';
 import { getChatStatsToolDefinition } from './get-chat-stats';
 import { getChatsToolDefinition } from './get-chats';
 import { getContactsToolDefinition } from './get-contacts';
 import { getMeToolDefinition } from './get-me';
+// Single message tools
+import { getMessageLinkToolDefinition, getMessageToolDefinition } from './get-message';
 import { getMessagesToolDefinition } from './get-messages';
-
-// Messaging tools
-import { sendMessageToolDefinition } from './send-message';
-import { editMessageToolDefinition } from './edit-message';
-import { deleteMessagesToolDefinition } from './delete-messages';
-import { forwardMessagesToolDefinition } from './forward-messages';
+// User & contact management tools
+import {
+  getUserProfileToolDefinition,
+  getUserToolDefinition,
+  searchPublicChatToolDefinition,
+} from './get-user';
+import { joinChatToolDefinition, leaveChatToolDefinition } from './join-leave-chat';
+import {
+  getChatInviteLinkToolDefinition,
+  muteChatToolDefinition,
+  setChatTitleToolDefinition,
+} from './manage-chat';
+import {
+  addContactToolDefinition,
+  blockUserToolDefinition,
+  removeContactToolDefinition,
+} from './manage-contacts';
+import { markAsReadToolDefinition } from './mark-as-read';
+import { pinMessageToolDefinition } from './pin-message';
+// Reaction tools
+import { addReactionToolDefinition, removeReactionToolDefinition } from './reactions';
 import {
   searchChatMessagesToolDefinition,
   searchMessagesGlobalToolDefinition,
 } from './search-messages';
-import { pinMessageToolDefinition } from './pin-message';
-import { markAsReadToolDefinition } from './mark-as-read';
-
-// Chat management tools
-import { getChatToolDefinition } from './get-chat';
-import {
-  createPrivateChatToolDefinition,
-  createGroupToolDefinition,
-  createChannelToolDefinition,
-} from './create-chat';
-import { joinChatToolDefinition, leaveChatToolDefinition } from './join-leave-chat';
-import {
-  setChatTitleToolDefinition,
-  getChatInviteLinkToolDefinition,
-  muteChatToolDefinition,
-} from './manage-chat';
-
-// User & contact management tools
-import {
-  getUserToolDefinition,
-  getUserProfileToolDefinition,
-  searchPublicChatToolDefinition,
-} from './get-user';
-import {
-  addContactToolDefinition,
-  removeContactToolDefinition,
-  blockUserToolDefinition,
-} from './manage-contacts';
-
-// Reaction tools
-import { addReactionToolDefinition, removeReactionToolDefinition } from './reactions';
-
+// Media tools
+import { sendDocumentToolDefinition, sendPhotoToolDefinition } from './send-media';
+// Messaging tools
+import { sendMessageToolDefinition } from './send-message';
 // Sticker & GIF tools
 import {
-  sendStickerToolDefinition,
-  sendGifToolDefinition,
   searchStickersToolDefinition,
+  sendGifToolDefinition,
+  sendStickerToolDefinition,
 } from './stickers-gifs';
-
-// Folder management tools
-import {
-  getChatFoldersToolDefinition,
-  createChatFolderToolDefinition,
-  editChatFolderToolDefinition,
-  deleteChatFolderToolDefinition,
-} from './folders';
-
-// Group admin tools
-import {
-  getChatMembersToolDefinition,
-  addChatMemberToolDefinition,
-  banChatMemberToolDefinition,
-  promoteChatMemberToolDefinition,
-  getChatAdminsToolDefinition,
-  setChatPermissionsToolDefinition,
-} from './chat-members';
-
-// Media tools
-import { sendPhotoToolDefinition, sendDocumentToolDefinition } from './send-media';
-
-// Single message tools
-import { getMessageToolDefinition, getMessageLinkToolDefinition } from './get-message';
 
 /**
  * Get all storage-related tool definitions.
