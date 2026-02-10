@@ -1,5 +1,6 @@
 // Tool: telegram-get-messages
 // Get messages from a chat with optional filtering.
+import { isSensitiveText } from '../../common/sensitive-filter';
 import { getMessages } from '../db-helpers';
 
 /**
@@ -80,14 +81,24 @@ export const getMessagesToolDefinition: ToolDefinition = {
         return formatted;
       });
 
+      // Filter out sensitive messages unless user opted in to show them
+      const s = globalThis.getTelegramSkillState();
+      const showSensitive = s.config.showSensitiveMessages ?? false;
+      const filteredMessages = showSensitive
+        ? formattedMessages
+        : formattedMessages.filter(
+            (formatted: Record<string, unknown>) =>
+              !isSensitiveText((formatted.text as string) || '')
+          );
+
       return JSON.stringify({
         success: true,
         chat_id: chatId,
-        count: formattedMessages.length,
-        messages: formattedMessages,
-        has_more: formattedMessages.length === limit,
+        count: filteredMessages.length,
+        messages: filteredMessages,
+        has_more: filteredMessages.length === limit,
         oldest_id:
-          formattedMessages.length > 0 ? formattedMessages[formattedMessages.length - 1].id : null,
+          filteredMessages.length > 0 ? filteredMessages[filteredMessages.length - 1].id : null,
       });
     } catch (err) {
       return JSON.stringify({
