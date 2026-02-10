@@ -11,6 +11,7 @@ export interface SkillConfig {
   isAuthenticated?: boolean;
   /** Set by tests / OAuth flow */
   clientId?: string;
+  showSensitiveMessages?: boolean;
 }
 
 export interface GmailProfile {
