@@ -244,7 +244,7 @@ async function runSetupWizard(G: G, rl: readline.Interface): Promise<void> {
   const onSetupSubmit = G.onSetupSubmit as ((args: {
     stepId: string;
     values: Record<string, unknown>;
-  }) => { status: string; nextStep?: SetupStep; errors?: Array<{ field: string; message: string }> }) | undefined;
+  }) => { status: string; nextStep?: SetupStep; errors?: Array<{ field: string; message: string }> } | Promise<{ status: string; nextStep?: SetupStep; errors?: Array<{ field: string; message: string }> }>) | undefined;
 
   if (!onSetupStart) {
     console.log(`${c.yellow}This skill does not implement onSetupStart${c.reset}`);
@@ -273,7 +273,7 @@ async function runSetupWizard(G: G, rl: readline.Interface): Promise<void> {
       return;
     }
 
-    const submitResult = onSetupSubmit({ stepId: step.id, values });
+    const submitResult = await onSetupSubmit({ stepId: step.id, values });
 
     if (submitResult.status === 'error') {
       console.log(`\n${c.red}Setup errors:${c.reset}`);
@@ -388,11 +388,11 @@ async function runOAuthFlow(
     provider: string;
     grantedScopes: string[];
     accountLabel?: string;
-  }) => unknown) | undefined;
+  }) => unknown | Promise<unknown>) | undefined;
 
   if (typeof onOAuthComplete === 'function') {
     try {
-      const result = onOAuthComplete({
+      const result = await onOAuthComplete({
         credentialId: trimmedId,
         provider: oauthConfig.provider,
         grantedScopes: oauthConfig.scopes,
@@ -630,21 +630,21 @@ async function cmdCall(G: G, rest: string, rl: readline.Interface): Promise<void
   }
 }
 
-function cmdLifecycle(G: G, hookName: string): void {
-  const fn = G[hookName] as (() => void) | undefined;
+async function cmdLifecycle(G: G, hookName: string): Promise<void> {
+  const fn = G[hookName] as (() => void | Promise<void>) | undefined;
   if (typeof fn !== 'function') {
     console.log(`${c.yellow}${hookName}() not defined${c.reset}`);
     return;
   }
   try {
-    fn();
+    await fn();
     console.log(`${c.green}${hookName}() completed${c.reset}`);
   } catch (e) {
     console.log(`${c.red}${hookName}() error: ${e}${c.reset}`);
   }
 }
 
-function cmdCron(G: G, scheduleId: string): void {
+async function cmdCron(G: G, scheduleId: string): Promise<void> {
   if (!scheduleId) {
     const schedules = getLiveState().cronSchedules;
     const ids = Object.keys(schedules);
@@ -659,44 +659,44 @@ function cmdCron(G: G, scheduleId: string): void {
     }
     return;
   }
-  const fn = G.onCronTrigger as ((id: string) => void) | undefined;
+  const fn = G.onCronTrigger as ((id: string) => void | Promise<void>) | undefined;
   if (typeof fn !== 'function') {
     console.log(`${c.yellow}onCronTrigger not defined${c.reset}`);
     return;
   }
   try {
-    fn(scheduleId);
+    await fn(scheduleId);
     console.log(`${c.green}onCronTrigger("${scheduleId}") completed${c.reset}`);
   } catch (e) {
     console.log(`${c.red}onCronTrigger error: ${e}${c.reset}`);
   }
 }
 
-function cmdSession(G: G, rest: string): void {
+async function cmdSession(G: G, rest: string): Promise<void> {
   const parts = rest.split(/\s+/);
   const action = parts[0];
   const sessionId = parts[1] || `session-${Date.now()}`;
 
   if (action === 'start') {
-    const fn = G.onSessionStart as ((args: { sessionId: string }) => void) | undefined;
+    const fn = G.onSessionStart as ((args: { sessionId: string }) => void | Promise<void>) | undefined;
     if (typeof fn !== 'function') {
       console.log(`${c.yellow}onSessionStart not defined${c.reset}`);
       return;
     }
     try {
-      fn({ sessionId });
+      await fn({ sessionId });
       console.log(`${c.green}onSessionStart("${sessionId}") completed${c.reset}`);
     } catch (e) {
       console.log(`${c.red}onSessionStart error: ${e}${c.reset}`);
     }
   } else if (action === 'end') {
-    const fn = G.onSessionEnd as ((args: { sessionId: string }) => void) | undefined;
+    const fn = G.onSessionEnd as ((args: { sessionId: string }) => void | Promise<void>) | undefined;
     if (typeof fn !== 'function') {
       console.log(`${c.yellow}onSessionEnd not defined${c.reset}`);
       return;
     }
     try {
-      fn({ sessionId });
+      await fn({ sessionId });
       console.log(`${c.green}onSessionEnd("${sessionId}") completed${c.reset}`);
     } catch (e) {
       console.log(`${c.red}onSessionEnd error: ${e}${c.reset}`);
@@ -706,17 +706,20 @@ function cmdSession(G: G, rest: string): void {
   }
 }
 
-function cmdOptions(G: G): void {
+async function cmdOptions(G: G): Promise<void> {
   const fn = G.onListOptions as (() => { options: Array<{
     name: string; type: string; label: string; value: unknown;
     options?: Array<{ label: string; value: string }>;
-  }> }) | undefined;
+  }> } | Promise<{ options: Array<{
+    name: string; type: string; label: string; value: unknown;
+    options?: Array<{ label: string; value: string }>;
+  }> }>) | undefined;
   if (typeof fn !== 'function') {
     console.log(`${c.yellow}onListOptions not defined${c.reset}`);
     return;
   }
   try {
-    const result = fn();
+    const result = await fn();
     if (!result.options || result.options.length === 0) {
       console.log(`${c.dim}No options available${c.reset}`);
       return;
@@ -733,7 +736,7 @@ function cmdOptions(G: G): void {
   }
 }
 
-function cmdSetOption(G: G, rest: string): void {
+async function cmdSetOption(G: G, rest: string): Promise<void> {
   const spaceIdx = rest.indexOf(' ');
   if (spaceIdx === -1) {
     console.log(`${c.red}Usage: option <name> <value>${c.reset}`);
@@ -742,7 +745,7 @@ function cmdSetOption(G: G, rest: string): void {
   const name = rest.substring(0, spaceIdx);
   const rawValue = rest.substring(spaceIdx + 1).trim();
 
-  const fn = G.onSetOption as ((args: { name: string; value: unknown }) => void) | undefined;
+  const fn = G.onSetOption as ((args: { name: string; value: unknown }) => void | Promise<void>) | undefined;
   if (typeof fn !== 'function') {
     console.log(`${c.yellow}onSetOption not defined${c.reset}`);
     return;
@@ -758,7 +761,7 @@ function cmdSetOption(G: G, rest: string): void {
   }
 
   try {
-    fn({ name, value });
+    await fn({ name, value });
     console.log(`${c.green}Set ${name} = ${JSON.stringify(value)}${c.reset}`);
   } catch (e) {
     console.log(`${c.red}onSetOption error: ${e}${c.reset}`);
@@ -1081,7 +1084,7 @@ async function main(): Promise<void> {
   // Call init + start
   if (typeof ctx.G.init === 'function') {
     try {
-      (ctx.G.init as () => void)();
+      await (ctx.G.init as () => void | Promise<void>)();
       console.log(`${c.green}init()${c.reset} ok`);
     } catch (e) {
       console.log(`${c.red}init() error: ${e}${c.reset}`);
@@ -1089,7 +1092,7 @@ async function main(): Promise<void> {
   }
   if (typeof ctx.G.start === 'function') {
     try {
-      (ctx.G.start as () => void)();
+      await (ctx.G.start as () => void | Promise<void>)();
       console.log(`${c.green}start()${c.reset} ok`);
     } catch (e) {
       console.log(`${c.red}start() error: ${e}${c.reset}`);
@@ -1156,23 +1159,23 @@ async function main(): Promise<void> {
           break;
 
         case 'init':
-          cmdLifecycle(ctx.G, 'init');
+          await cmdLifecycle(ctx.G, 'init');
           break;
 
         case 'start':
-          cmdLifecycle(ctx.G, 'start');
+          await cmdLifecycle(ctx.G, 'start');
           break;
 
         case 'stop':
-          cmdLifecycle(ctx.G, 'stop');
+          await cmdLifecycle(ctx.G, 'stop');
           break;
 
         case 'cron':
-          cmdCron(ctx.G, rest);
+          await cmdCron(ctx.G, rest);
           break;
 
         case 'session':
-          cmdSession(ctx.G, rest);
+          await cmdSession(ctx.G, rest);
           break;
 
         case 'setup':
@@ -1184,11 +1187,11 @@ async function main(): Promise<void> {
           break;
 
         case 'options':
-          cmdOptions(ctx.G);
+          await cmdOptions(ctx.G);
           break;
 
         case 'option':
-          cmdSetOption(ctx.G, rest);
+          await cmdSetOption(ctx.G, rest);
           break;
 
         case 'state':
@@ -1216,7 +1219,7 @@ async function main(): Promise<void> {
           break;
 
         case 'disconnect':
-          cmdLifecycle(ctx.G, 'onDisconnect');
+          await cmdLifecycle(ctx.G, 'onDisconnect');
           break;
 
         case 'tdlib': {
@@ -1296,7 +1299,7 @@ async function main(): Promise<void> {
           console.log(`${c.dim}Reloading...${c.reset}`);
           // Stop current skill
           if (typeof ctx.G.stop === 'function') {
-            try { (ctx.G.stop as () => void)(); } catch { /* ignore */ }
+            try { await (ctx.G.stop as () => void | Promise<void>)(); } catch { /* ignore */ }
           }
           ctx.cleanup();
 
@@ -1325,11 +1328,11 @@ async function main(): Promise<void> {
             }
 
             if (typeof ctx.G.init === 'function') {
-              (ctx.G.init as () => void)();
+              await (ctx.G.init as () => void | Promise<void>)();
               console.log(`${c.green}init()${c.reset} ok`);
             }
             if (typeof ctx.G.start === 'function') {
-              (ctx.G.start as () => void)();
+              await (ctx.G.start as () => void | Promise<void>)();
               console.log(`${c.green}start()${c.reset} ok`);
             }
           } catch (e) {
@@ -1356,7 +1359,7 @@ async function main(): Promise<void> {
   console.log(`\n${c.dim}Shutting down...${c.reset}`);
   if (typeof ctx.G.stop === 'function') {
     try {
-      (ctx.G.stop as () => void)();
+      await (ctx.G.stop as () => void | Promise<void>)();
       console.log(`${c.green}stop()${c.reset} ok`);
     } catch (e) {
       console.log(`${c.red}stop() error: ${e}${c.reset}`);

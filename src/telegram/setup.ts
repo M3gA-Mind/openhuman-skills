@@ -182,12 +182,57 @@ export function createSetupHandlers(deps: TelegramSetupDeps): {
         };
       }
 
+      if (s.authState === 'ready') {
+        return { status: 'complete' };
+      }
+
+      if (s.authState === 'waitCode') {
+        // Already past phone step — skip straight to code entry
+        return {
+          status: 'next',
+          nextStep: {
+            id: 'code',
+            title: 'Enter Verification Code',
+            description:
+              'A verification code has been sent to your Telegram app or SMS. Enter it below.',
+            fields: [
+              {
+                name: 'code',
+                type: 'text' as const,
+                label: 'Verification Code',
+                description: '5-digit code from Telegram',
+                required: true,
+              },
+            ],
+          },
+        };
+      }
+
+      if (s.authState === 'waitPassword') {
+        // Already past phone + code — skip to 2FA
+        return {
+          status: 'next',
+          nextStep: {
+            id: 'password',
+            title: 'Two-Factor Authentication',
+            description: s.passwordHint
+              ? `Enter your 2FA password. Hint: ${s.passwordHint}`
+              : 'Enter your 2FA password.',
+            fields: [
+              {
+                name: 'password',
+                type: 'password' as const,
+                label: '2FA Password',
+                description: 'Your Telegram 2FA password',
+                required: true,
+              },
+            ],
+          },
+        };
+      }
+
       if (s.authState !== 'waitPhoneNumber') {
         console.log(`[telegram] Auth state is '${s.authState}', expected 'waitPhoneNumber'`);
-        if (s.authState === 'ready') {
-          // Already authenticated — skip to complete
-          return { status: 'complete' };
-        }
         return {
           status: 'error',
           errors: [
