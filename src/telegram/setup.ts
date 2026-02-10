@@ -5,7 +5,7 @@ import {
   checkAuthenticationCode,
   checkAuthenticationPassword,
 } from './api/auth';
-import './skill-state';
+import './state';
 
 export interface TelegramSetupDeps {
   initClient: () => Promise<void>;

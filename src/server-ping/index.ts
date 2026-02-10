@@ -1,45 +1,32 @@
-// Import all tools
-// Import to initialize state
+// server-ping/index.ts — Orchestrator
+// Comprehensive demo skill showcasing all V8 runtime capabilities.
 import './skill-state';
-import { getPingHistoryTool } from './tools/get-ping-history';
-import { getPingStatsTool } from './tools/get-ping-stats';
-import { listPeerSkillsTool } from './tools/list-peer-skills';
-import { pingNowTool } from './tools/ping-now';
-import { readConfigTool } from './tools/read-config';
-import { updateServerUrlTool } from './tools/update-server-url';
+import './db/schema';
+import './db/helpers';
+import './setup';
+import {
+  getPingStatsTool,
+  getPingHistoryTool,
+  pingNowTool,
+  listPeerSkillsTool,
+  updateServerUrlTool,
+  readConfigTool,
+} from './tools';
 import type { SkillConfig } from './types';
-
-// server-ping/index.ts
-// Comprehensive demo skill showcasing all V8 runtime capabilities:
-//   Setup flow, DB (SQLite), State (persistent KV + frontend pub), Data (file I/O),
-//   Net (HTTP), setInterval (scheduling), Platform (OS/notify), Skills (interop),
-//   Options, Tools, and Session lifecycle.
+import type { ServerPingState } from './skill-state';
 
 // ---------------------------------------------------------------------------
 // Lifecycle hooks
 // ---------------------------------------------------------------------------
 
-function getSkillState(): import('./skill-state').ServerPingState {
+function getSkillState(): ServerPingState {
   return (globalThis as any).getSkillState();
 }
 
 function init(): void {
   console.log(`[server-ping] Initializing on ${platform.os()}`);
+  globalThis.initializeServerPingSchema();
   const s = getSkillState();
-
-  // Create DB table for ping history
-  db.exec(
-    `CREATE TABLE IF NOT EXISTS ping_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT NOT NULL,
-      url TEXT NOT NULL,
-      status INTEGER,
-      latency_ms INTEGER,
-      success INTEGER NOT NULL,
-      error TEXT
-    )`,
-    []
-  );
 
   // Load persisted config from store
   const saved = state.get('config') as Partial<SkillConfig> | null;
@@ -53,7 +40,6 @@ function init(): void {
 
   // Fall back to the host's backend URL if no server URL is configured yet
   if (!s.config.serverUrl) {
-    // Try both BACKEND_URL and BACKEND_URL (Vite uses VITE_ prefix)
     const envUrl = platform.env('BACKEND_URL') || platform.env('BACKEND_URL');
     if (envUrl) {
       s.config.serverUrl = envUrl;
@@ -84,20 +70,15 @@ function start(): void {
     `[server-ping] Starting — ping every ${s.config.pingIntervalSec}s (using setInterval)`
   );
 
-  // Clear any existing interval
   if (s.pingIntervalId !== null) {
     clearInterval(s.pingIntervalId);
   }
 
-  // Start the ping interval (cast to number for browser-like V8 environment)
   s.pingIntervalId = setInterval(() => {
     doPing();
   }, intervalMs) as unknown as number;
 
-  // Do an immediate first ping
   doPing();
-
-  // Publish initial state to frontend
   publishState();
 }
 
@@ -105,136 +86,13 @@ function stop(): void {
   console.log('[server-ping] Stopping');
   const s = getSkillState();
 
-  // Clear the ping interval
   if (s.pingIntervalId !== null) {
     clearInterval(s.pingIntervalId);
     s.pingIntervalId = null;
   }
 
-  // Persist counters
   state.set('counters', { pingCount: s.pingCount, failCount: s.failCount });
-
   state.set('status', 'stopped');
-}
-
-// ---------------------------------------------------------------------------
-// Setup flow (multi-step)
-// ---------------------------------------------------------------------------
-
-function onSetupStart(): SetupStartResult {
-  console.log('[server-ping] onSetupStart');
-  // Pre-fill with the host's backend URL so the user doesn't have to type it
-  const defaultUrl = platform.env('BACKEND_URL') || platform.env('BACKEND_URL') || '';
-
-  return {
-    step: {
-      id: 'server-config',
-      title: 'Server Configuration',
-      description: 'Enter the server URL to monitor and choose a ping interval.',
-      fields: [
-        {
-          name: 'serverUrl',
-          type: 'text',
-          label: 'Server URL',
-          description: 'Full URL to ping (e.g. https://api.example.com/health)',
-          required: true,
-          default: defaultUrl,
-          placeholder: 'https://api.example.com/health',
-        },
-        {
-          name: 'pingIntervalSec',
-          type: 'select',
-          label: 'Ping Interval',
-          description: 'How often to check the server',
-          required: true,
-          default: '10',
-          options: [
-            { label: 'Every 5 seconds', value: '5' },
-            { label: 'Every 10 seconds', value: '10' },
-            { label: 'Every 30 seconds', value: '30' },
-            { label: 'Every 60 seconds', value: '60' },
-          ],
-        },
-      ],
-    },
-  };
-}
-
-async function onSetupSubmit(args: {
-  stepId: string;
-  values: Record<string, unknown>;
-}): Promise<SetupSubmitResult> {
-  const { stepId, values } = args;
-  const s = getSkillState();
-
-  if (stepId === 'server-config') {
-    // Validate URL
-    const url = ((values.serverUrl as string) ?? '').trim();
-    if (!url) {
-      return {
-        status: 'error',
-        errors: [{ field: 'serverUrl', message: 'Server URL is required' }],
-      };
-    }
-    if (!url.startsWith('http')) {
-      return {
-        status: 'error',
-        errors: [{ field: 'serverUrl', message: 'URL must start with http:// or https://' }],
-      };
-    }
-
-    // Store values and move to next step
-    s.config.serverUrl = url;
-    s.config.pingIntervalSec = parseInt(values.pingIntervalSec as string) || 10;
-
-    return {
-      status: 'next',
-      nextStep: {
-        id: 'notification-config',
-        title: 'Notification Preferences',
-        description: 'Choose when to receive desktop notifications.',
-        fields: [
-          {
-            name: 'notifyOnDown',
-            type: 'boolean',
-            label: 'Notify when server goes down',
-            description: 'Send a desktop notification when the server becomes unreachable',
-            required: false,
-            default: true,
-          },
-          {
-            name: 'notifyOnRecover',
-            type: 'boolean',
-            label: 'Notify when server recovers',
-            description: 'Send a desktop notification when the server comes back online',
-            required: false,
-            default: true,
-          },
-        ],
-      },
-    };
-  }
-
-  if (stepId === 'notification-config') {
-    s.config.notifyOnDown = (values.notifyOnDown as boolean) ?? true;
-    s.config.notifyOnRecover = (values.notifyOnRecover as boolean) ?? true;
-
-    // Persist full config to store
-    state.set('config', s.config);
-
-    // Write a human-readable config file to data dir
-    data.write('config.json', JSON.stringify(s.config, null, 2));
-
-    console.log(`[server-ping] Setup complete — monitoring ${s.config.serverUrl}`);
-
-    return { status: 'complete' };
-  }
-
-  return { status: 'error', errors: [{ field: '', message: `Unknown setup step: ${stepId}` }] };
-}
-
-function onSetupCancel(): void {
-  console.log('[server-ping] Setup cancelled');
 }
 
 // ---------------------------------------------------------------------------
@@ -291,7 +149,6 @@ function onSetOption(args: { name: string; value: unknown }): void {
     const newInterval = parseInt(value as string) || 10;
     s.config.pingIntervalSec = newInterval;
 
-    // Restart interval with new timing
     if (s.pingIntervalId !== null) {
       clearInterval(s.pingIntervalId);
       const intervalMs = newInterval * 1000;
@@ -308,7 +165,6 @@ function onSetOption(args: { name: string; value: unknown }): void {
     s.config.verboseLogging = !!value;
   }
 
-  // Persist updated config
   state.set('config', s.config);
   publishState();
   console.log(`[server-ping] Option '${name}' set to ${value}`);
@@ -338,8 +194,11 @@ function onSessionEnd(args: { sessionId: string }): void {
 
 function onCronTrigger(_scheduleId: string): void {
   // No longer using cron — ping is driven by setInterval in start()
-  // This handler is kept for backwards compatibility
 }
+
+// ---------------------------------------------------------------------------
+// Ping logic
+// ---------------------------------------------------------------------------
 
 async function doPing(): Promise<void> {
   const s = getSkillState();
@@ -357,7 +216,6 @@ async function doPing(): Promise<void> {
       s.failCount++;
       s.consecutiveFails++;
     } else {
-      // Check if recovering from downtime
       if (s.wasDown && s.config.notifyOnRecover) {
         sendNotification(
           'Server Recovered',
@@ -372,11 +230,7 @@ async function doPing(): Promise<void> {
       console.log(`[server-ping] #${s.pingCount} ${response.status} ${latencyMs}ms`);
     }
 
-    // Log to DB
-    db.exec(
-      'INSERT INTO ping_log (timestamp, url, status, latency_ms, success, error) VALUES (?, ?, ?, ?, ?, ?)',
-      [timestamp, s.config.serverUrl, response.status, latencyMs, success ? 1 : 0, null]
-    );
+    globalThis.serverPingDb.logPing(timestamp, s.config.serverUrl, response.status, latencyMs, success, null);
   } catch (e) {
     const latencyMs = Date.now() - startTime;
     s.failCount++;
@@ -384,28 +238,19 @@ async function doPing(): Promise<void> {
 
     console.error(`[server-ping] #${s.pingCount} FAILED: ${e}`);
 
-    // Log failure to DB
-    db.exec(
-      'INSERT INTO ping_log (timestamp, url, status, latency_ms, success, error) VALUES (?, ?, ?, ?, ?, ?)',
-      [timestamp, s.config.serverUrl, 0, latencyMs, 0, String(e)]
-    );
+    globalThis.serverPingDb.logPing(timestamp, s.config.serverUrl, 0, latencyMs, false, String(e));
 
-    // Notify on first failure
     if (s.consecutiveFails === 1 && s.config.notifyOnDown) {
       s.wasDown = true;
       sendNotification('Server Down', `${s.config.serverUrl} is unreachable: ${e}`);
     }
   }
 
-  // Persist counters periodically (every 10 pings)
   if (s.pingCount % 10 === 0) {
     state.set('counters', { pingCount: s.pingCount, failCount: s.failCount });
   }
 
-  // Publish state to frontend
   publishState();
-
-  // Append to data log file (last 100 entries summary)
   appendDataLog(timestamp);
 }
 
@@ -419,11 +264,7 @@ function publishState(): void {
   const uptimePct =
     s.pingCount > 0 ? Math.round(((s.pingCount - s.failCount) / s.pingCount) * 10000) / 100 : 100;
 
-  // Get latest latency from DB
-  const latest = db.get(
-    'SELECT latency_ms, status, success FROM ping_log ORDER BY id DESC LIMIT 1',
-    []
-  ) as { latency_ms: number; status: number; success: number } | null;
+  const latest = globalThis.serverPingDb.getLatestPing();
 
   state.setPartial({
     status: s.consecutiveFails > 0 ? 'down' : 'healthy',
@@ -439,26 +280,12 @@ function publishState(): void {
   });
 }
 
-// Expose functions to globalThis for bundled tool modules
-const _g = globalThis as Record<string, unknown>;
-_g.doPing = doPing;
-_g.publishState = publishState;
-
 // ---------------------------------------------------------------------------
 // Data file logging
 // ---------------------------------------------------------------------------
 
 function appendDataLog(timestamp: string): void {
-  const recent = db.all(
-    'SELECT timestamp, status, latency_ms, success, error FROM ping_log ORDER BY id DESC LIMIT 20',
-    []
-  ) as {
-    timestamp: string;
-    status: number;
-    latency_ms: number;
-    success: number;
-    error: string | null;
-  }[];
+  const recent = globalThis.serverPingDb.getRecentPings(20);
 
   const lines = ['# Ping Log (last 20 entries)', `# Generated: ${timestamp}`, ''];
   for (const r of recent) {
@@ -488,22 +315,27 @@ function sendNotification(title: string, body: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Tools (callable by AI and other skills)
+// Expose on globalThis for bundled tool modules and test harness
 // ---------------------------------------------------------------------------
 
-// Expose lifecycle hooks on globalThis so the REPL/runtime can call them.
-// esbuild IIFE bundling traps function declarations in the closure scope.
+const _g = globalThis as Record<string, unknown>;
+_g.doPing = doPing;
+_g.publishState = publishState;
 _g.init = init;
 _g.start = start;
 _g.stop = stop;
 _g.onCronTrigger = onCronTrigger;
-_g.onSetupStart = onSetupStart;
-_g.onSetupSubmit = onSetupSubmit;
-_g.onSetupCancel = onSetupCancel;
+_g.onSetupStart = globalThis.serverPingSetup.onSetupStart;
+_g.onSetupSubmit = globalThis.serverPingSetup.onSetupSubmit;
+_g.onSetupCancel = globalThis.serverPingSetup.onSetupCancel;
 _g.onListOptions = onListOptions;
 _g.onSetOption = onSetOption;
 _g.onSessionStart = onSessionStart;
 _g.onSessionEnd = onSessionEnd;
+
+// ---------------------------------------------------------------------------
+// Skill export
+// ---------------------------------------------------------------------------
 
 const tools = [
   getPingStatsTool,
@@ -529,9 +361,9 @@ const skill: Skill = {
   start,
   stop,
   onCronTrigger,
-  onSetupStart,
-  onSetupSubmit,
-  onSetupCancel,
+  onSetupStart: globalThis.serverPingSetup.onSetupStart,
+  onSetupSubmit: globalThis.serverPingSetup.onSetupSubmit,
+  onSetupCancel: globalThis.serverPingSetup.onSetupCancel,
   onListOptions,
   onSetOption,
   onSessionStart,
