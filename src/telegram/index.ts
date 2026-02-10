@@ -93,9 +93,6 @@ function handleUpdate(update: TdUpdate): void {
       state.set('config', s.config);
       console.log('[telegram] User authenticated successfully');
       loadMe();
-
-      // Trigger initial sync if not already completed
-      triggerInitialSync();
     }
 
     publishState();
@@ -236,7 +233,7 @@ async function loadMe(): Promise<void> {
 /**
  * Trigger initial sync of chats, messages, and contacts.
  */
-async function triggerInitialSync(): Promise<void> {
+async function onSync(): Promise<void> {
   const s = globalThis.getTelegramSkillState();
 
   // Skip if already syncing or completed
@@ -918,70 +915,6 @@ const telegramStatusTool: ToolDefinition = {
   },
 };
 
-/**
- * telegram-sync tool - Trigger data synchronization.
- */
-const telegramSyncTool: ToolDefinition = {
-  name: 'telegram-sync',
-  description:
-    'Trigger synchronization of Telegram data (chats, messages, contacts) to local storage.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      force: {
-        type: 'string',
-        description: 'Force re-sync even if already completed (true/false)',
-        enum: ['true', 'false'],
-      },
-    },
-    required: [],
-  },
-  execute(args: Record<string, unknown>): string {
-    const s = globalThis.getTelegramSkillState();
-    const force = args.force === 'true';
-
-    if (!s.config.isAuthenticated) {
-      return JSON.stringify({
-        success: false,
-        error: 'Not authenticated. Please complete Telegram setup first.',
-      });
-    }
-
-    if (s.sync.inProgress) {
-      return JSON.stringify({
-        success: false,
-        error: 'Sync already in progress.',
-        syncInProgress: true,
-      });
-    }
-
-    if (s.sync.completed && !force) {
-      return JSON.stringify({
-        success: true,
-        message: 'Sync already completed. Use force=true to re-sync.',
-        lastSyncTime: s.sync.lastSyncTime,
-        storage: s.storage,
-      });
-    }
-
-    // Trigger sync in background
-    triggerInitialSync().catch(err => {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      onError({
-        type: 'network',
-        message: errorMsg,
-        source: 'triggerInitialSync',
-        recoverable: true,
-      });
-    });
-
-    return JSON.stringify({
-      success: true,
-      message: 'Sync started. Check status with telegram-status tool.',
-      syncInProgress: true,
-    });
-  },
-};
 
 // ---------------------------------------------------------------------------
 // Skill Export
@@ -1019,6 +952,7 @@ function onError(args: SkillErrorArgs): void {
   publishState();
 }
 
+
 const skill: Skill = {
   info: {
     id: 'telegram',
@@ -1028,7 +962,7 @@ const skill: Skill = {
     auto_start: false,
     setup: { required: true, label: 'Configure Telegram' },
   },
-  tools: [telegramPingTool, telegramStatusTool, telegramSyncTool, ...tools],
+  tools: [telegramPingTool, telegramStatusTool,  ...tools],
   init,
   start,
   stop,
@@ -1039,6 +973,7 @@ const skill: Skill = {
   onSetupCancel,
   onPing,
   onError,
+  onSync,
   onListOptions,
   onSetOption,
 };

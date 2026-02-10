@@ -314,11 +314,23 @@ export async function createBridgeAPIs(
 
   const tdlib = tdlibAvailable && tdlibBridge
     ? {
-        isAvailable: () => true,
-        createClient: (dir: string) => tdlibBridge!.createClient(dir),
-        send: (requestJson: string) => tdlibBridge!.send(requestJson),
-        receive: (timeoutMs: number) => tdlibBridge!.receive(timeoutMs),
-        destroy: () => tdlibBridge!.destroy(),
+        isAvailable: () => tdlibBridge !== null,
+        createClient: (dir: string) => {
+          if (!tdlibBridge) return Promise.reject(new Error('TDLib bridge destroyed'));
+          return tdlibBridge.createClient(dir);
+        },
+        send: (requestJson: string) => {
+          if (!tdlibBridge) return Promise.reject(new Error('TDLib bridge destroyed'));
+          return tdlibBridge.send(requestJson);
+        },
+        receive: (timeoutMs: number) => {
+          if (!tdlibBridge) return Promise.resolve(null);
+          return tdlibBridge.receive(timeoutMs);
+        },
+        destroy: () => {
+          if (!tdlibBridge) return Promise.resolve();
+          return tdlibBridge.destroy();
+        },
       }
     : {
         isAvailable: () => false,
@@ -518,7 +530,10 @@ export async function createBridgeAPIs(
     },
   };
 
-  // Timers — tracked in live state for manual triggering
+  // Timers — use real timers so async skill code (Promises, update loops) works.
+  // Also tracked in live state for debugging/inspection.
+  const realTimers = new Map<number, ReturnType<typeof globalThis.setTimeout>>();
+
   const setTimeout = (callback: () => void, delay = 0): number => {
     const id = liveState.nextTimerId++;
     liveState.timers.set(id, {
@@ -527,6 +542,12 @@ export async function createBridgeAPIs(
       isInterval: false,
       scheduledAt: Date.now(),
     });
+    const handle = globalThis.setTimeout(() => {
+      liveState.timers.delete(id);
+      realTimers.delete(id);
+      callback();
+    }, delay);
+    realTimers.set(id, handle);
     return id;
   };
 
@@ -538,15 +559,29 @@ export async function createBridgeAPIs(
       isInterval: true,
       scheduledAt: Date.now(),
     });
+    const handle = globalThis.setInterval(() => {
+      callback();
+    }, delay);
+    realTimers.set(id, handle);
     return id;
   };
 
   const clearTimeout = (id: number): void => {
     liveState.timers.delete(id);
+    const handle = realTimers.get(id);
+    if (handle !== undefined) {
+      globalThis.clearTimeout(handle);
+      realTimers.delete(id);
+    }
   };
 
   const clearInterval = (id: number): void => {
     liveState.timers.delete(id);
+    const handle = realTimers.get(id);
+    if (handle !== undefined) {
+      globalThis.clearInterval(handle);
+      realTimers.delete(id);
+    }
   };
 
   // Browser-like globals (required by some skills)
