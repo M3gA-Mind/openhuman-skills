@@ -219,6 +219,20 @@ export class TdLibClient {
       throw new Error('TDLib client not initialized');
     }
 
+    // Check if we're currently rate-limited
+    if (this.rateLimitedUntil > 0) {
+      const remaining = this.rateLimitedUntil - Date.now();
+      if (remaining > 0) {
+        const secs = Math.ceil(remaining / 1000);
+        throw new Error(
+          `Rate limited: too many requests. Please wait ${secs}s before retrying. ` +
+            `(Request: ${request['@type']})`
+        );
+      }
+      // Cooldown expired, clear it
+      this.rateLimitedUntil = 0;
+    }
+
     let response: T;
 
     if (isTdLibOpsAvailable() && globalThis.tdlib) {
@@ -236,10 +250,40 @@ export class TdLibClient {
     // Check for error response
     if (response['@type'] === 'error') {
       const error = response as unknown as TdError;
+
+      // Handle FLOOD_WAIT / 429 Too Many Requests
+      if (error.code === 429) {
+        const retryAfterSecs = this.parseRetryAfter(error.message);
+        this.rateLimitedUntil = Date.now() + retryAfterSecs * 1000;
+        console.warn(
+          `[tdlib-client] Rate limited for ${retryAfterSecs}s (request: ${request['@type']})`
+        );
+        throw new Error(
+          `Rate limited: too many requests. Please wait ${retryAfterSecs}s before retrying. ` +
+            `(Request: ${request['@type']})`
+        );
+      }
+
       throw new Error(`TDLib error ${error.code}: ${error.message}`);
     }
 
     return response;
+  }
+
+  /**
+   * Check if the client is currently rate-limited.
+   */
+  get isRateLimited(): boolean {
+    return this.rateLimitedUntil > 0 && Date.now() < this.rateLimitedUntil;
+  }
+
+  /**
+   * Get the number of seconds remaining on the rate limit, or 0 if not limited.
+   */
+  get rateLimitRemaining(): number {
+    if (this.rateLimitedUntil <= 0) return 0;
+    const remaining = Math.ceil((this.rateLimitedUntil - Date.now()) / 1000);
+    return remaining > 0 ? remaining : 0;
   }
 
   /**
@@ -366,6 +410,20 @@ export class TdLibClient {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Parse the retry-after seconds from a TDLib 429 error message.
+   * Format: "Too Many Requests: retry after N"
+   * Falls back to 30s if parsing fails.
+   */
+  private parseRetryAfter(message: string): number {
+    const match = message.match(/retry after (\d+)/i);
+    if (match) {
+      const seconds = parseInt(match[1], 10);
+      if (seconds > 0) return seconds;
+    }
+    return 30; // Fallback: 30 seconds
   }
 
   // ============================================================================
