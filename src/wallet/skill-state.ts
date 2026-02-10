@@ -1,7 +1,5 @@
-/**
- * skill-state.ts — global state for the wallet skill.
- * Wallet addresses come from the frontend via onLoad(params).
- */
+// skill-state.ts — global state for the wallet skill.
+// Wallet addresses come from the frontend via onLoad(params).
 import type { WalletSkillConfig } from './types';
 
 export interface WalletSkillState {
@@ -9,16 +7,21 @@ export interface WalletSkillState {
   isRunning: boolean;
 }
 
-const _g = globalThis as Record<string, unknown>;
+declare global {
+  function getWalletSkillState(): WalletSkillState;
+  var __walletSkillState: WalletSkillState;
+}
 
-const state: WalletSkillState = { config: { walletAddresses: [], networks: [] }, isRunning: false };
-_g.__walletSkillState = state;
+const skillState: WalletSkillState = {
+  config: { walletAddresses: [], networks: [] },
+  isRunning: false,
+};
+globalThis.__walletSkillState = skillState;
 
-// Assign to globalThis so bundled code can call it (esbuild can break named exports in IIFE bundle)
-_g.getState = function getState(): WalletSkillState {
-  return _g.__walletSkillState as WalletSkillState;
+globalThis.getWalletSkillState = function getWalletSkillState(): WalletSkillState {
+  return globalThis.__walletSkillState;
 };
 
-export function getState(): WalletSkillState {
-  return (_g.getState as () => WalletSkillState)();
+export function getWalletSkillState(): WalletSkillState {
+  return globalThis.getWalletSkillState();
 }
