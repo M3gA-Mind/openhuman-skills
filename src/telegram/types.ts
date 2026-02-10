@@ -240,7 +240,11 @@ export interface TdUpdateUserStatus {
 export interface TdChatFolderInfo {
   '@type': 'chatFolderInfo';
   id: number;
-  name: { '@type': 'chatFolderName'; text: { '@type': 'formattedText'; text: string }; animate_custom_emoji: boolean };
+  name: {
+    '@type': 'chatFolderName';
+    text: { '@type': 'formattedText'; text: string };
+    animate_custom_emoji: boolean;
+  };
   icon?: { '@type': 'chatFolderIcon'; name?: string };
   color_id?: number;
   is_shareable?: boolean;

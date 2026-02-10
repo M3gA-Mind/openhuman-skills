@@ -170,6 +170,9 @@ export class TdLibClient {
   private updateLoopRunning = false;
   private updateLoopAbort: AbortController | null = null;
 
+  /** Timestamp (ms) until which requests are rate-limited. 0 = not limited. */
+  private rateLimitedUntil = 0;
+
   /**
    * Check if TDLib is available on the current platform.
    */

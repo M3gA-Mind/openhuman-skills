@@ -22,9 +22,7 @@ export async function getChats(
     '@type': 'getChats',
     chat_list: { '@type': 'chatListMain' },
     limit,
-  })) as {
-    chat_ids?: number[];
-  };
+  })) as { chat_ids?: number[] };
 }
 
 /**

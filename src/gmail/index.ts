@@ -3,7 +3,6 @@
 // Import all tools
 import './db/helpers';
 import './db/schema';
-
 // Import modules to initialize state and expose functions on globalThis
 import './state';
 import { getEmailTool } from './tools/get-email';
