@@ -412,7 +412,7 @@ async function performSync(): Promise<void> {
           const params: Record<string, unknown> = { types, exclude_archived: true, limit: 200 };
           if (cursor) params.cursor = cursor;
           const listResult = await slackApiFetch('GET', '/conversations.list', params);
-          const raw = (listResult.channels as Record<string, unknown>[]) || [];
+          const raw = (listResult.messages as Record<string, unknown>[]) || [];
           for (const ch of raw) {
             const id = ch.id as string;
             if (id) seen.add(id);

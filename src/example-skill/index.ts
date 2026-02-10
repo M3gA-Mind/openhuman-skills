@@ -318,10 +318,10 @@ function onSetupStart(): SetupStartResult {
   };
 }
 
-function onSetupSubmit(args: {
+async function onSetupSubmit(args: {
   stepId: string;
   values: Record<string, unknown>;
-}): SetupSubmitResult {
+}): Promise<SetupSubmitResult> {
   const s = getState();
 
   // Step 1: Credentials

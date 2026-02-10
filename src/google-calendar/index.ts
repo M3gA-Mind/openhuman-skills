@@ -13,7 +13,7 @@ import type { SkillConfig } from './types';
 // Calendar API helper (uses oauth.fetch; path relative to manifest apiBaseUrl)
 // ---------------------------------------------------------------------------
 
-function calendarFetch(
+async function calendarFetch(
   endpoint: string,
   options: {
     method?: string;
@@ -21,7 +21,7 @@ function calendarFetch(
     headers?: Record<string, string>;
     timeout?: number;
   } = {}
-): { success: boolean; data?: unknown; error?: { code: number; message: string } } {
+): Promise<{ success: boolean; data?: unknown; error?: { code: number; message: string } }> {
   if (!oauth.getCredential()) {
     return {
       success: false,
@@ -30,7 +30,7 @@ function calendarFetch(
   }
 
   try {
-    const response = oauth.fetch(endpoint, {
+    const response = await oauth.fetch(endpoint, {
       method: options.method || 'GET',
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
       body: options.body,
@@ -102,7 +102,7 @@ function onSessionEnd(args: { sessionId: string }): void {
   if (i > -1) s.activeSessions.splice(i, 1);
 }
 
-function onOAuthComplete(args: OAuthCompleteArgs): void {
+async function onOAuthComplete(args: OAuthCompleteArgs): Promise<void> {
   console.log(`[google-calendar] OAuth complete: ${args.provider}`);
   const s = globalThis.getGoogleCalendarSkillState();
   s.config.credentialId = args.credentialId;
@@ -144,17 +144,8 @@ function publishSkillState(): void {
 
 const _g = globalThis as Record<string, unknown>;
 _g.calendarFetch = calendarFetch;
-_g.publishSkillState = publishSkillState;
-_g.init = init;
-_g.start = start;
-_g.stop = stop;
-_g.onSessionStart = onSessionStart;
-_g.onSessionEnd = onSessionEnd;
-_g.onOAuthComplete = onOAuthComplete;
-_g.onOAuthRevoked = onOAuthRevoked;
-_g.onDisconnect = onDisconnect;
 
-tools = [
+const tools: ToolDefinition[] = [
   listCalendarsTool,
   listEventsTool,
   getEventTool,
@@ -162,3 +153,25 @@ tools = [
   updateEventTool,
   deleteEventTool,
 ];
+
+const skill: Skill = {
+  info: {
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    version: '1.0.0',
+    description: 'Google Calendar integration',
+    auto_start: false,
+    setup: { required: true, label: 'Google Calendar' },
+  },
+  tools,
+  init,
+  start,
+  stop,
+  onSessionStart,
+  onSessionEnd,
+  onOAuthComplete,
+  onOAuthRevoked,
+  onDisconnect,
+};
+
+export default skill;
