@@ -1,7 +1,7 @@
 // Setup wizard for wallet skill
 import { DEFAULT_NETWORKS } from './types';
 
-function onSetupStart(): SetupStartResult {
+async function onSetupStart(): Promise<SetupStartResult> {
   const networks = Array.isArray(DEFAULT_NETWORKS) ? DEFAULT_NETWORKS : [];
   const evmOptions = networks.map(n => ({ label: n.name, value: n.chain_id }));
 
@@ -25,10 +25,10 @@ function onSetupStart(): SetupStartResult {
   };
 }
 
-function onSetupSubmit(args: {
+async function onSetupSubmit(args: {
   stepId: string;
   values: Record<string, unknown>;
-}): SetupSubmitResult {
+}): Promise<SetupSubmitResult> {
   const s = globalThis.getWalletSkillState();
 
   if (args.stepId === 'networks') {
@@ -45,7 +45,7 @@ function onSetupSubmit(args: {
   return { status: 'error', errors: [{ field: '', message: `Unknown step: ${args.stepId}` }] };
 }
 
-function onSetupCancel(): void {
+async function onSetupCancel(): Promise<void> {
   // No transient state to clear
 }
 
