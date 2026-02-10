@@ -20,7 +20,6 @@ const SENSITIVE_PHRASES: string[] = [
   'verification code',
   'one-time',
   'one time password',
-  'otp',
   'your code is',
   'confirm your email',
   'security code',
@@ -73,8 +72,15 @@ const SENSITIVE_PHRASES: string[] = [
 ];
 
 /**
+ * Lowercase standalone words matched only as whole tokens (word boundaries).
+ * Used to avoid false positives from substrings (e.g. "otp" in "desktop").
+ */
+const SENSITIVE_STANDALONE_WORDS: string[] = ['otp'];
+
+/**
  * Returns true if the text appears to be sensitive (password reset, OTP, 2FA, login link, etc.).
  * Empty or missing text is treated as non-sensitive.
+ * Phrase matches use substring; standalone words (e.g. "otp") require word boundaries.
  */
 export function isSensitiveText(text: string): boolean {
   if (typeof text !== 'string') return false;
@@ -83,5 +89,13 @@ export function isSensitiveText(text: string): boolean {
   for (const phrase of SENSITIVE_PHRASES) {
     if (normalized.includes(phrase)) return true;
   }
+  for (const word of SENSITIVE_STANDALONE_WORDS) {
+    const re = new RegExp('\\b' + escapeRegex(word) + '\\b', 'i');
+    if (re.test(normalized)) return true;
+  }
   return false;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
