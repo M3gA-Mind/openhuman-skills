@@ -14,12 +14,12 @@ export interface TelegramSetupDeps {
 }
 
 export function createSetupHandlers(deps: TelegramSetupDeps): {
-  onSetupStart: () => SetupStartResult;
+  onSetupStart: () => Promise<SetupStartResult>;
   onSetupSubmit: (args: {
     stepId: string;
     values: Record<string, unknown>;
   }) => Promise<SetupSubmitResult>;
-  onSetupCancel: () => void;
+  onSetupCancel: () => Promise<void>;
 } {
   const { initClient, onError, publishState } = deps;
 
@@ -51,7 +51,7 @@ export function createSetupHandlers(deps: TelegramSetupDeps): {
     console.log('[telegram] Password submitted');
   }
 
-  function onSetupStart(): SetupStartResult {
+  async function onSetupStart(): Promise<SetupStartResult> {
     const s = globalThis.getTelegramSkillState();
 
     if (!s.client && !s.clientConnecting) {
@@ -398,7 +398,7 @@ export function createSetupHandlers(deps: TelegramSetupDeps): {
     return { status: 'error', errors: [{ field: '', message: `Unknown setup step: ${stepId}` }] };
   }
 
-  function onSetupCancel(): void {
+  async function onSetupCancel(): Promise<void> {
     console.log('[telegram] Setup cancelled');
     const s = globalThis.getTelegramSkillState();
     s.config.pendingCode = false;

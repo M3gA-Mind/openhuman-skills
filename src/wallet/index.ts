@@ -8,7 +8,7 @@ import { DEFAULT_NETWORKS, type NetworkConfig } from './types';
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-function init(): void {
+async function init(): Promise<void> {
   const s = globalThis.getWalletSkillState();
   const saved = state.get('config') as {
     walletAddresses?: string[];
@@ -29,19 +29,19 @@ function init(): void {
   }
 }
 
-function start(): void {
+async function start(): Promise<void> {
   const s = globalThis.getWalletSkillState();
   s.isRunning = true;
   publishState();
 }
 
-function stop(): void {
+async function stop(): Promise<void> {
   const s = globalThis.getWalletSkillState();
   s.isRunning = false;
   state.setPartial({ connection_status: 'disconnected', status: 'stopped' });
 }
 
-function onLoad(params: { walletAddress?: string; walletAddresses?: string[] }): void {
+async function onLoad(params: { walletAddress?: string; walletAddresses?: string[] }): Promise<void> {
   const s = globalThis.getWalletSkillState();
   if (params.walletAddress) {
     if (!s.config.walletAddresses.includes(params.walletAddress)) {
@@ -60,7 +60,7 @@ function onLoad(params: { walletAddress?: string; walletAddresses?: string[] }):
 // State publishing
 // ---------------------------------------------------------------------------
 
-function publishState(): void {
+async function publishState(): Promise<void> {
   const s = globalThis.getWalletSkillState();
   state.setPartial({
     connection_status: 'connected',

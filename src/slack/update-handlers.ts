@@ -1,6 +1,6 @@
 // Event-driven ingestion handler for Slack skill
 
-export function onServerEvent(event: string, payload: unknown): void {
+export async function onServerEvent(event: string, payload: unknown): Promise<void> {
   if (event !== 'slack') {
     return;
   }

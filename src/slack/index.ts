@@ -64,7 +64,7 @@ function getMessageDisplayText(msg: Record<string, unknown>): string {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-function init(): void {
+async function init(): Promise<void> {
   console.log('[slack] Initializing');
   globalThis.initializeSlackSchema();
 
@@ -98,7 +98,7 @@ function init(): void {
   publishState();
 }
 
-function start(): void {
+async function start(): Promise<void> {
   const s = globalThis.getSlackSkillState();
   if (!s.config.botToken) {
     console.log('[slack] No bot token — skill inactive until setup completes');
@@ -118,7 +118,7 @@ function start(): void {
   publishState();
 }
 
-function stop(): void {
+async function stop(): Promise<void> {
   const s = globalThis.getSlackSkillState();
   cron.unregister('slack-sync');
   state.set('config', s.config);
@@ -129,7 +129,7 @@ function stop(): void {
   publishState();
 }
 
-function onCronTrigger(scheduleId: string): void {
+async function onCronTrigger(scheduleId: string): Promise<void> {
   if (scheduleId === 'slack-sync') {
     globalThis.slackSync.performSync();
   }
@@ -139,7 +139,7 @@ function onCronTrigger(scheduleId: string): void {
 // State publishing
 // ---------------------------------------------------------------------------
 
-function publishState(): void {
+async function publishState(): Promise<void> {
   const s = globalThis.getSlackSkillState();
   state.setPartial({
     connected: !!s.config.botToken,

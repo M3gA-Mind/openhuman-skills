@@ -1,7 +1,7 @@
 // Setup wizard for Slack skill
 import { SLACK_BASE_URL } from './types';
 
-function onSetupStart(): SetupStartResult {
+async function onSetupStart(): Promise<SetupStartResult> {
   return {
     step: {
       id: 'bot_token',
@@ -113,7 +113,7 @@ async function onSetupSubmit(args: {
   }
 }
 
-function onSetupCancel(): void {
+async function onSetupCancel(): Promise<void> {
   console.log('[slack] Setup cancelled');
 }
 

@@ -303,7 +303,7 @@ function updateStorageStats(): void {
 // Lifecycle Hooks
 // ---------------------------------------------------------------------------
 
-function init(): void {
+async function init(): Promise<void> {
   console.log('[telegram] Initializing skill');
 
   // Get TdLibClient class from globalThis
@@ -347,12 +347,12 @@ function init(): void {
   publishState();
 }
 
-function start(): void {
+async function start(): Promise<void> {
   console.log('[telegram] Starting skill');
   // The update loop is already running from initClient
 }
 
-function stop(): void {
+async function stop(): Promise<void> {
   console.log('[telegram] Stopping skill');
   const s = globalThis.getTelegramSkillState();
 
@@ -422,11 +422,11 @@ async function onDisconnect(): Promise<void> {
   console.log('[telegram] Disconnect cleanup completed');
 }
 
-function onCronTrigger(_scheduleId: string): void {
+async function onCronTrigger(_scheduleId: string): Promise<void> {
   // No-op: TDLib update loop handles everything
 }
 
-function onListOptions(): { options: SkillOption[] } {
+async function onListOptions(): Promise<{ options: SkillOption[] }> {
   const s = globalThis.getTelegramSkillState();
   return {
     options: [
@@ -452,7 +452,7 @@ function onListOptions(): { options: SkillOption[] } {
   };
 }
 
-function onSetOption(args: { name: string; value: unknown }): void {
+async function onSetOption(args: { name: string; value: unknown }): Promise<void> {
   const s = globalThis.getTelegramSkillState();
   if (args.name === 'showSensitiveMessages') {
     s.config.showSensitiveMessages = Boolean(args.value);
@@ -460,7 +460,7 @@ function onSetOption(args: { name: string; value: unknown }): void {
   }
 }
 
-function publishState(): void {
+async function publishState(): Promise<void> {
   const s = globalThis.getTelegramSkillState();
   const isConnected = s.client !== null && s.client.initialized;
   const isConnecting = s.clientConnecting;
@@ -573,7 +573,7 @@ async function onPing(): Promise<PingResult> {
   return { ok: true };
 }
 
-function onError(args: SkillErrorArgs): void {
+async function onError(args: SkillErrorArgs): Promise<void> {
   const s = globalThis.getTelegramSkillState();
   console.error(
     `[telegram] onError: type=${args.type} source=${args.source || 'unknown'} message=${args.message}`
