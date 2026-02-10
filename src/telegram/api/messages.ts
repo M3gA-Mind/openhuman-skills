@@ -173,3 +173,134 @@ export async function getChatPinnedMessage(
     return null;
   }
 }
+
+/**
+ * Edit a text message.
+ */
+export async function editMessageText(
+  client: TdLibClient,
+  chatId: number,
+  messageId: number,
+  text: string
+): Promise<TdMessage> {
+  const response = await client.send({
+    '@type': 'editMessageText',
+    chat_id: chatId,
+    message_id: messageId,
+    input_message_content: {
+      '@type': 'inputMessageText',
+      text: { '@type': 'formattedText', text },
+    },
+  });
+  return response as unknown as TdMessage;
+}
+
+/**
+ * Delete messages from a chat.
+ */
+export async function deleteMessages(
+  client: TdLibClient,
+  chatId: number,
+  messageIds: number[],
+  revoke: boolean = true
+): Promise<void> {
+  await client.send({
+    '@type': 'deleteMessages',
+    chat_id: chatId,
+    message_ids: messageIds,
+    revoke,
+  });
+}
+
+/**
+ * Pin a message in a chat.
+ */
+export async function pinChatMessage(
+  client: TdLibClient,
+  chatId: number,
+  messageId: number,
+  disableNotification: boolean = false,
+  onlyForSelf: boolean = false
+): Promise<void> {
+  await client.send({
+    '@type': 'pinChatMessage',
+    chat_id: chatId,
+    message_id: messageId,
+    disable_notification: disableNotification,
+    only_for_self: onlyForSelf,
+  });
+}
+
+/**
+ * Unpin a message in a chat.
+ */
+export async function unpinChatMessage(
+  client: TdLibClient,
+  chatId: number,
+  messageId: number
+): Promise<void> {
+  await client.send({
+    '@type': 'unpinChatMessage',
+    chat_id: chatId,
+    message_id: messageId,
+  });
+}
+
+/**
+ * Get a shareable link to a specific message.
+ */
+export async function getMessageLink(
+  client: TdLibClient,
+  chatId: number,
+  messageId: number
+): Promise<{ link?: string }> {
+  try {
+    const response = await client.send({
+      '@type': 'getMessageLink',
+      chat_id: chatId,
+      message_id: messageId,
+      for_album: false,
+      in_message_thread: false,
+    });
+    return response as { link?: string };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Add a reaction emoji to a message.
+ */
+export async function addMessageReaction(
+  client: TdLibClient,
+  chatId: number,
+  messageId: number,
+  emoji: string,
+  isBig: boolean = false
+): Promise<void> {
+  await client.send({
+    '@type': 'addMessageReaction',
+    chat_id: chatId,
+    message_id: messageId,
+    reaction_type: { '@type': 'reactionTypeEmoji', emoji },
+    is_big: isBig,
+    update_recent_reactions: true,
+  });
+}
+
+/**
+ * Remove a reaction from a message.
+ */
+export async function removeMessageReaction(
+  client: TdLibClient,
+  chatId: number,
+  messageId: number,
+  emoji: string
+): Promise<void> {
+  await client.send({
+    '@type': 'removeMessageReaction',
+    chat_id: chatId,
+    message_id: messageId,
+    reaction_type: { '@type': 'reactionTypeEmoji', emoji },
+  });
+}

@@ -67,3 +67,52 @@ export async function searchPublicChat(
     return null;
   }
 }
+
+/**
+ * Block a user.
+ */
+export async function blockUser(client: TdLibClient, userId: number): Promise<void> {
+  await client.send({
+    '@type': 'toggleMessageSenderIsBlocked',
+    sender_id: { '@type': 'messageSenderUser', user_id: userId },
+    is_blocked: true,
+  });
+}
+
+/**
+ * Unblock a user.
+ */
+export async function unblockUser(client: TdLibClient, userId: number): Promise<void> {
+  await client.send({
+    '@type': 'toggleMessageSenderIsBlocked',
+    sender_id: { '@type': 'messageSenderUser', user_id: userId },
+    is_blocked: false,
+  });
+}
+
+/**
+ * Add a user as a saved contact.
+ */
+export async function addContact(
+  client: TdLibClient,
+  contact: { userId: number; firstName: string; lastName?: string; phoneNumber?: string }
+): Promise<void> {
+  await client.send({
+    '@type': 'addContact',
+    contact: {
+      '@type': 'contact',
+      user_id: contact.userId,
+      first_name: contact.firstName,
+      last_name: contact.lastName || '',
+      phone_number: contact.phoneNumber || '',
+    },
+    share_phone_number: false,
+  });
+}
+
+/**
+ * Remove saved contacts by user IDs.
+ */
+export async function removeContacts(client: TdLibClient, userIds: number[]): Promise<void> {
+  await client.send({ '@type': 'removeContacts', user_ids: userIds });
+}

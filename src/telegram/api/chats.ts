@@ -82,3 +82,141 @@ export async function getBasicGroupFullInfo(
     return null;
   }
 }
+
+/**
+ * Create a private (DM) chat with a user.
+ */
+export async function createPrivateChat(
+  client: TdLibClient,
+  userId: number
+): Promise<Record<string, unknown>> {
+  const response = await client.send({
+    '@type': 'createPrivateChat',
+    user_id: userId,
+    force: false,
+  });
+  return response as Record<string, unknown>;
+}
+
+/**
+ * Create a new basic group chat.
+ */
+export async function createNewBasicGroupChat(
+  client: TdLibClient,
+  userIds: number[],
+  title: string
+): Promise<Record<string, unknown>> {
+  const response = await client.send({
+    '@type': 'createNewBasicGroupChat',
+    user_ids: userIds,
+    title,
+  });
+  return response as Record<string, unknown>;
+}
+
+/**
+ * Create a new supergroup or channel.
+ */
+export async function createNewSupergroupChat(
+  client: TdLibClient,
+  title: string,
+  isChannel: boolean,
+  description?: string
+): Promise<Record<string, unknown>> {
+  const response = await client.send({
+    '@type': 'createNewSupergroupChat',
+    title,
+    is_channel: isChannel,
+    description: description || '',
+  });
+  return response as Record<string, unknown>;
+}
+
+/**
+ * Join a chat by invite link.
+ */
+export async function joinChatByInviteLink(
+  client: TdLibClient,
+  inviteLink: string
+): Promise<Record<string, unknown>> {
+  const response = await client.send({
+    '@type': 'joinChatByInviteLink',
+    invite_link: inviteLink,
+  });
+  return response as Record<string, unknown>;
+}
+
+/**
+ * Leave a group or channel chat.
+ */
+export async function leaveChat(client: TdLibClient, chatId: number): Promise<void> {
+  await client.send({ '@type': 'leaveChat', chat_id: chatId });
+}
+
+/**
+ * Set a chat's title.
+ */
+export async function setChatTitle(
+  client: TdLibClient,
+  chatId: number,
+  title: string
+): Promise<void> {
+  await client.send({ '@type': 'setChatTitle', chat_id: chatId, title });
+}
+
+/**
+ * Set chat notification settings (mute/unmute).
+ */
+export async function setChatNotificationSettings(
+  client: TdLibClient,
+  chatId: number,
+  muteFor: number
+): Promise<void> {
+  await client.send({
+    '@type': 'setChatNotificationSettings',
+    chat_id: chatId,
+    notification_settings: {
+      '@type': 'chatNotificationSettings',
+      use_default_mute_for: false,
+      mute_for: muteFor,
+    },
+  });
+}
+
+/**
+ * Create a chat invite link.
+ */
+export async function createChatInviteLink(
+  client: TdLibClient,
+  chatId: number,
+  name?: string,
+  memberLimit?: number
+): Promise<{ invite_link?: string; name?: string }> {
+  const response = await client.send({
+    '@type': 'createChatInviteLink',
+    chat_id: chatId,
+    name: name || '',
+    expiration_date: 0,
+    member_limit: memberLimit || 0,
+    creates_join_request: false,
+  });
+  return response as { invite_link?: string; name?: string };
+}
+
+/**
+ * Set default permissions for a group chat.
+ */
+export async function setChatPermissions(
+  client: TdLibClient,
+  chatId: number,
+  permissions: Record<string, boolean>
+): Promise<void> {
+  await client.send({
+    '@type': 'setChatPermissions',
+    chat_id: chatId,
+    permissions: {
+      '@type': 'chatPermissions',
+      ...permissions,
+    },
+  });
+}
