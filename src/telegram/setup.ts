@@ -208,7 +208,7 @@ export function createSetupHandlers(deps: TelegramSetupDeps): {
 
       if (!s.client || s.clientConnecting) {
         if (!s.client && !s.clientConnecting) {
-          initClient().catch(err => {
+          await initClient().catch(err => {
             const errorMsg = err instanceof Error ? err.message : String(err);
             onError({
               type: 'network',

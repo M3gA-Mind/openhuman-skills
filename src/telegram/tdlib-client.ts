@@ -233,6 +233,8 @@ export class TdLibClient {
       this.rateLimitedUntil = 0;
     }
 
+    console.log('[tdlib-client] Sending request:', request);
+
     let response: T;
 
     if (isTdLibOpsAvailable() && globalThis.tdlib) {

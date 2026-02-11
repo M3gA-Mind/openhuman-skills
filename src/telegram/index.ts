@@ -148,9 +148,6 @@ async function initClient(): Promise<void> {
     // Store client in state
     s.client = client;
 
-    // Start update loop
-    client.startUpdateLoop(handleUpdate);
-
     const apiId = 28685916;
     const apiHash = 'd540ab21dece5404af298c44f4f6386d';
 
@@ -168,7 +165,27 @@ async function initClient(): Promise<void> {
       application_version: '1.0.0',
     });
 
-    console.log('[telegram] TDLib parameters set, waiting for auth state...');
+    console.log('[telegram] TDLib parameters set, polling for auth state...');
+
+    // Manually poll for auth state updates BEFORE starting the background
+    // update loop.  This guarantees auth state transitions to a usable value
+    // (e.g. waitPhoneNumber / ready) before initClient() returns, avoiding
+    // race conditions where the setup wizard checks authState too early.
+    const maxWaitMs = 10000;
+    const startTime = Date.now();
+    while (
+      (s.authState === 'unknown' || s.authState === 'waitTdlibParameters') &&
+      Date.now() - startTime < maxWaitMs
+    ) {
+      const update = await client.receive(500);
+      if (update) {
+        handleUpdate(update);
+      }
+    }
+    console.log('[telegram] Auth state after init polling:', s.authState);
+
+    // Now start the background update loop for ongoing updates
+    client.startUpdateLoop(handleUpdate);
 
     s.clientConnecting = false;
     publishState();
@@ -379,7 +396,7 @@ async function onDisconnect(): Promise<void> {
 
   try {
     // If authenticated, log out from Telegram servers first
-    if (s.client && s.config.isAuthenticated) {
+    if (s.client && (s.authState === 'ready' || s.config.isAuthenticated)) {
       console.log('[telegram] Logging out from Telegram servers');
       await s.client.logOut().catch(e => {
         const errorMsg = e instanceof Error ? e.message : String(e);
