@@ -25,7 +25,7 @@ jobs:
       - name: Sync to upstream/develop
         run: |
           mkdir -p public
-          cp -r * public/
+          rsync -a --exclude 'public' ./ public/
           cp -r *.husky public/
 
           rm public/CLAUDE.md
