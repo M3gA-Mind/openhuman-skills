@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync to upstream/develop
+      - name: Sync to upstream/main
         run: |
           mkdir -p public
           rsync -a --exclude 'public' ./ public/
@@ -42,7 +42,6 @@ jobs:
           publish_branch: main
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
-          full_commit_message: "chore: update develop branch [skip ci]"
+          full_commit_message: "chore: update main branch [skip ci]"
           personal_token: ${{ secrets.XGITHUB_TOKEN }}
           exclude_assets: ""
-          force_orphan: true
