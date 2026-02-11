@@ -39,7 +39,6 @@ function parseAuthState(update: TdUpdate): AuthorizationState {
   const stateType = (update as { authorization_state?: { '@type': string } }).authorization_state?.[
     '@type'
   ];
-  console.log('[telegram] stateType', stateType);
   switch (stateType) {
     case 'authorizationStateWaitTdlibParameters':
       return 'waitTdlibParameters';
@@ -62,7 +61,6 @@ function parseAuthState(update: TdUpdate): AuthorizationState {
  * Handle TDLib updates (authorization state changes, etc.)
  */
 function handleUpdate(update: TdUpdate): void {
-  console.log('[telegram] handleUpdate', JSON.stringify(update));
   const s = globalThis.getTelegramSkillState();
   const updateType = update['@type'];
 
@@ -149,34 +147,13 @@ async function initClient(): Promise<void> {
     // Store client in state
     s.client = client;
 
-    console.log('[telegram] Connected to TDLib, polling for auth state...');
-
-    // Manually poll for auth state updates BEFORE starting the background
-    // update loop.  This guarantees auth state transitions to a usable value
-    // (e.g. waitPhoneNumber / ready) before initClient() returns, avoiding
-    // race conditions where the setup wizard checks authState too early.
-    const maxWaitMs = 10000;
-    const startTime = Date.now();
-    while (
-      (s.authState === 'unknown' || s.authState === 'waitTdlibParameters') &&
-      Date.now() - startTime < maxWaitMs
-    ) {
-      const update = await client.receive(500);
-      if (update) {
-        handleUpdate(update);
-      }
-    }
-    console.log('[telegram] Auth state after init polling:', s.authState);
-
     // Now start the background update loop for ongoing updates
     client.startUpdateLoop(handleUpdate);
 
     // Ask TDLib for the current authorization state so the skill knows
     // where it stands immediately instead of waiting for an unsolicited update.
     try {
-      console.log('[telegram] Querying initial auth state...');
       const authState = await client.send({ '@type': 'getAuthorizationState' });
-      console.log('[telegram] Initial auth state:', authState);
       if (authState) {
         handleUpdate({
           '@type': 'updateAuthorizationState',
@@ -200,21 +177,6 @@ async function initClient(): Promise<void> {
   }
 }
 
-// /**
-//  * Get default data directory for TDLib files.
-//  */
-// function getDefaultDataDir(): string {
-//   // Use the skill's data directory if available via platform
-//   // Otherwise use a reasonable default
-//   const os = platform.os();
-//   if (os === 'windows') {
-//     return 'C:/Users/Public/AlphaHuman/telegram';
-//   } else if (os === 'macos') {
-//     return '/tmp/alphahuman/telegram.macos';
-//   } else {
-//     return '/tmp/alphahuman/telegram';
-//   }
-// }
 
 /**
  * Load current user info after authentication.
