@@ -1,8 +1,6 @@
 {
   "id": "slack",
   "name": "Slack",
-  "runtime": "v8",
-  "entry": "index.js",
   "version": "1.0.0",
   "ignoreInProduction": true,
   "description": "Full-fledged Slack bot: read and send messages, receive real-time events, and store all received messages in the skill DB.",
