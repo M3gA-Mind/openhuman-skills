@@ -42,5 +42,6 @@ jobs:
           publish_branch: develop
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: 'chore: update develop branch [skip ci]'
-          github_token: ${{ secrets.XGITHUB_TOKEN }}
+          full_commit_message: 'chore: update develop branch [skip ci]'
+          personal_token: ${{ secrets.XGITHUB_TOKEN }}
+          exclude_assets: ''
