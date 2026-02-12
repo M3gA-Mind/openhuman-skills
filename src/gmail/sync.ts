@@ -58,14 +58,8 @@ function formatDateForQuery(timestamp: number): string {
 async function fetchMessagePage(
   query: string,
   pageToken?: string
-): Promise<{
-  messages: Array<{ id: string; threadId: string }>;
-  nextPageToken?: string;
-}> {
-  const params: string[] = [
-    `maxResults=${PAGE_SIZE}`,
-    `q=${encodeURIComponent(query)}`,
-  ];
+): Promise<{ messages: Array<{ id: string; threadId: string }>; nextPageToken?: string }> {
+  const params: string[] = [`maxResults=${PAGE_SIZE}`, `q=${encodeURIComponent(query)}`];
   if (pageToken) params.push(`pageToken=${encodeURIComponent(pageToken)}`);
 
   const response = await gmailFetch(`/users/me/messages?${params.join('&')}`);

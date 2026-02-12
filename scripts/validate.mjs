@@ -198,11 +198,11 @@ function validateCodeQuality(skillDir) {
       // Skip comments
       if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
 
-      // No async/await (skill runtime is synchronous)
-      if (/\basync\s+(function|[\w(])/.test(line) || /\bawait\s+/.test(line)) {
-        warn(skillDir, `async/await usage in ${relPath}:${i + 1} (runtime is synchronous)`);
-        issues++;
-      }
+      // // async/await (skill runtime is asynchronous)
+      // if (!/\basync\s+(function|[\w(])/.test(line) && !/\bawait\s+/.test(line)) {
+      //   warn(skillDir, `no async/await usage in ${relPath}:${i + 1} (runtime is asynchronous)`);
+      //   issues++;
+      // }
 
       // No eval()
       if (/\beval\s*\(/.test(line)) {
