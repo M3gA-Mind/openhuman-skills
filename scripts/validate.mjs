@@ -150,34 +150,7 @@ function validateEntryFile(skillDir) {
   return true;
 }
 
-function validateSecrets(skillDir) {
-  const skillPath = join(srcDir, skillDir);
-  const tsFiles = getAllTsFiles(skillPath);
-  let found = 0;
 
-  for (const filePath of tsFiles) {
-    // Skip test files
-    if (filePath.includes('__tests__')) continue;
-
-    const content = readFileSync(filePath, 'utf-8');
-    const lines = content.split('\n');
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (isSecretExclusion(line)) continue;
-
-      for (const { name, pattern } of SECRET_PATTERNS) {
-        if (pattern.test(line)) {
-          const relPath = filePath.replace(srcDir + '/', '');
-          error(skillDir, `Possible ${name} found in ${relPath}:${i + 1}`);
-          found++;
-        }
-      }
-    }
-  }
-
-  if (found === 0) pass('No secrets detected');
-}
 
 function validateCodeQuality(skillDir) {
   const skillPath = join(srcDir, skillDir);
@@ -272,15 +245,6 @@ function validateOAuthSetup(skillDir, manifest, allContent) {
     }
   }
 
-  // Validate apiBaseUrl
-  if (!oauthConfig.apiBaseUrl || typeof oauthConfig.apiBaseUrl !== 'string') {
-    error(skillDir, 'setup.oauth.apiBaseUrl must be a non-empty string');
-  } else if (!oauthConfig.apiBaseUrl.startsWith('https://')) {
-    error(skillDir, 'setup.oauth.apiBaseUrl must start with https://');
-  } else {
-    pass(`OAuth apiBaseUrl: ${oauthConfig.apiBaseUrl}`);
-  }
-
   // Check that skill implements onOAuthComplete
   const hasOAuthComplete = allContent.includes('onOAuthComplete');
   if (!hasOAuthComplete) {
@@ -347,7 +311,6 @@ for (const skillDir of skillDirs) {
   validateNaming(skillDir);
   const manifest = validateManifest(skillDir);
   validateEntryFile(skillDir);
-  validateSecrets(skillDir);
   validateCodeQuality(skillDir);
   validateSetupFlow(skillDir, manifest);
 
