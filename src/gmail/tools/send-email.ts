@@ -2,7 +2,6 @@
 // Send emails via Gmail API with support for attachments, HTML/text, and threading
 import { gmailFetch } from '../api';
 import { upsertEmail } from '../db/helpers';
-import '../state';
 import { getGmailSkillState } from '../state';
 
 export const sendEmailTool: ToolDefinition = {
