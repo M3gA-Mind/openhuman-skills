@@ -2,7 +2,8 @@
 // Get emails with filtering and search capabilities
 import { isSensitiveText } from '../../helpers';
 import { gmailFetch } from '../api';
-import '../state';
+import { upsertEmail } from '../db/helpers';
+import { getGmailSkillState } from '../state';
 
 export const getEmailsTool: ToolDefinition = {
   name: 'gmail-get-emails',
@@ -129,15 +130,12 @@ export const getEmailsTool: ToolDefinition = {
           });
 
           // Store in local database for caching
-          const upsertEmail = (globalThis as { upsertEmail?: (msg: any) => void }).upsertEmail;
-          if (upsertEmail) {
-            upsertEmail(message);
-          }
+          upsertEmail(message);
         }
       }
 
       // Filter out sensitive emails unless user opted in to show them
-      const s = globalThis.getGmailSkillState();
+      const s = getGmailSkillState();
       const showSensitive = s.config.showSensitiveMessages ?? false;
       const filteredEmails = showSensitive
         ? emails

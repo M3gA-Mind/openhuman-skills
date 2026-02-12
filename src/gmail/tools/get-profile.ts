@@ -1,7 +1,7 @@
 // Tool: gmail-get-profile
 // Get Gmail user profile information
 import { gmailFetch } from '../api';
-import '../state';
+import { getGmailSkillState } from '../state';
 
 export const getProfileTool: ToolDefinition = {
   name: 'gmail-get-profile',
@@ -30,7 +30,7 @@ export const getProfileTool: ToolDefinition = {
       const profile = response.data;
 
       // Update skill state with profile info
-      const s = globalThis.getGmailSkillState();
+      const s = getGmailSkillState();
       s.profile = {
         emailAddress: profile.emailAddress,
         messagesTotal: profile.messagesTotal || 0,

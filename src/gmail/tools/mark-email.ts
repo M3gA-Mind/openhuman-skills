@@ -1,6 +1,7 @@
 // Tool: gmail-mark-email
 // Mark emails as read/unread, important, starred, etc.
 import { gmailFetch } from '../api';
+import { updateEmailReadStatus } from '../db/helpers';
 import '../state';
 
 export const markEmailTool: ToolDefinition = {
@@ -81,17 +82,8 @@ export const markEmailTool: ToolDefinition = {
             results.push({ message_id: messageId, success: true, action });
 
             // Update local database
-            const updateEmailReadStatus = (
-              globalThis as { updateEmailReadStatus?: (id: string, isRead: boolean) => void }
-            ).updateEmailReadStatus;
-
-            if (updateEmailReadStatus) {
-              if (action === 'mark_read') {
-                updateEmailReadStatus(messageId, true);
-              } else if (action === 'mark_unread') {
-                updateEmailReadStatus(messageId, false);
-              }
-            }
+            if (action === 'mark_read') updateEmailReadStatus(messageId, true);
+            else if (action === 'mark_unread') updateEmailReadStatus(messageId, false);
           } else {
             results.push({
               message_id: messageId,

@@ -3,8 +3,11 @@
 // Import all tools
 import { loadGmailProfile } from './api/helpers';
 import './db/helpers';
+import { getSyncState, setSyncState } from './db/helpers';
 import './db/schema';
+import { initializeGmailSchema } from './db/schema';
 import './state';
+import { getGmailSkillState } from './state';
 import { onSync } from './sync';
 import { tools } from './tools';
 import type { SkillConfig } from './types';
@@ -15,13 +18,10 @@ import type { SkillConfig } from './types';
 
 async function init(): Promise<void> {
   console.log(`[gmail] Initializing on ${platform.os()}`);
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   // Initialize database schema
-  const initSchema = (globalThis as { initializeGmailSchema?: () => void }).initializeGmailSchema;
-  if (initSchema) {
-    initSchema();
-  }
+  initializeGmailSchema();
 
   // Load persisted config from store
   const saved = state.get('config') as Partial<SkillConfig> | null;
@@ -36,14 +36,10 @@ async function init(): Promise<void> {
   }
 
   // Load sync status
-  const getSyncState = (globalThis as { getSyncState?: (key: string) => string | null })
-    .getSyncState;
-  if (getSyncState) {
-    const lastSync = getSyncState('last_sync_time');
-    const lastHistoryId = getSyncState('last_history_id');
-    if (lastSync) s.syncStatus.lastSyncTime = parseInt(lastSync, 10);
-    if (lastHistoryId) s.syncStatus.lastHistoryId = lastHistoryId;
-  }
+  const lastSync = getSyncState('last_sync_time');
+  const lastHistoryId = getSyncState('last_history_id');
+  if (lastSync) s.syncStatus.lastSyncTime = parseInt(lastSync, 10);
+  if (lastHistoryId) s.syncStatus.lastHistoryId = lastHistoryId;
 
   const isConnected = !!oauth.getCredential();
   console.log(`[gmail] Initialized. Connected: ${isConnected}`);
@@ -51,7 +47,7 @@ async function init(): Promise<void> {
 
 async function start(): Promise<void> {
   console.log('[gmail] Starting skill...');
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
   const credential = oauth.getCredential();
 
   if (credential && s.config.syncEnabled) {
@@ -72,7 +68,7 @@ async function start(): Promise<void> {
 
 async function stop(): Promise<void> {
   console.log('[gmail] Stopping skill...');
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   // Unregister cron schedules
   cron.unregister('gmail-sync');
@@ -80,12 +76,8 @@ async function stop(): Promise<void> {
   // Save current state
   state.set('config', s.config);
 
-  const setSyncState = (globalThis as { setSyncState?: (key: string, value: string) => void })
-    .setSyncState;
-  if (setSyncState) {
-    setSyncState('last_sync_time', s.syncStatus.lastSyncTime.toString());
-    setSyncState('last_history_id', s.syncStatus.lastHistoryId);
-  }
+  setSyncState('last_sync_time', s.syncStatus.lastSyncTime.toString());
+  setSyncState('last_history_id', s.syncStatus.lastHistoryId);
 
   console.log('[gmail] Skill stopped');
 }
@@ -95,13 +87,13 @@ async function onCronTrigger(scheduleId: string): Promise<void> {
 }
 
 async function onSessionStart(args: { sessionId: string }): Promise<void> {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
   s.activeSessions.push(args.sessionId);
   console.log(`[gmail] Session started: ${args.sessionId} (${s.activeSessions.length} active)`);
 }
 
 async function onSessionEnd(args: { sessionId: string }): Promise<void> {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
   const index = s.activeSessions.indexOf(args.sessionId);
   if (index > -1) {
     s.activeSessions.splice(index, 1);
@@ -115,7 +107,7 @@ async function onSessionEnd(args: { sessionId: string }): Promise<void> {
 
 async function onOAuthComplete(args: OAuthCompleteArgs): Promise<OAuthCompleteResult | void> {
   console.log(`[gmail] OAuth complete for provider: ${args.provider}`);
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   s.config.credentialId = args.credentialId;
   if (args.accountLabel) {
@@ -133,7 +125,7 @@ async function onOAuthComplete(args: OAuthCompleteArgs): Promise<OAuthCompleteRe
 
 async function onOAuthRevoked(args: OAuthRevokedArgs): Promise<void> {
   console.log(`[gmail] OAuth revoked: ${args.reason}`);
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   s.config.credentialId = '';
   s.config.userEmail = '';
@@ -150,7 +142,7 @@ async function onOAuthRevoked(args: OAuthRevokedArgs): Promise<void> {
 
 async function onDisconnect(): Promise<void> {
   console.log('[gmail] Disconnecting...');
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   // Revoke via OAuth bridge
   oauth.revoke();
@@ -178,7 +170,7 @@ async function onDisconnect(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function onListOptions(): Promise<{ options: SkillOption[] }> {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   return {
     options: [
@@ -229,7 +221,7 @@ async function onListOptions(): Promise<{ options: SkillOption[] }> {
 }
 
 async function onSetOption(args: { name: string; value: unknown }): Promise<void> {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
   const credential = oauth.getCredential();
 
   switch (args.name) {
@@ -275,7 +267,7 @@ async function onSetOption(args: { name: string; value: unknown }): Promise<void
 // ---------------------------------------------------------------------------
 
 function publishSkillState(): void {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
   const credential = oauth.getCredential();
   const isConnected = !!credential;
 
@@ -299,11 +291,6 @@ function publishSkillState(): void {
     lastError: s.lastApiError,
   });
 }
-
-// Expose helper functions on globalThis for tools to use
-const _g = globalThis as Record<string, unknown>;
-_g.publishSkillState = publishSkillState;
-_g.loadGmailProfile = loadGmailProfile;
 
 const skill: Skill = {
   info: {

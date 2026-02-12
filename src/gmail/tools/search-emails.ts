@@ -2,7 +2,9 @@
 // Advanced email search using Gmail query syntax
 import { isSensitiveText } from '../../helpers';
 import { gmailFetch } from '../api';
+import { upsertEmail } from '../db/helpers';
 import '../state';
+import { getGmailSkillState } from '../state';
 
 export const searchEmailsTool: ToolDefinition = {
   name: 'gmail-search-emails',
@@ -133,10 +135,7 @@ export const searchEmailsTool: ToolDefinition = {
             });
 
             // Cache in local database
-            const upsertEmail = (globalThis as { upsertEmail?: (msg: any) => void }).upsertEmail;
-            if (upsertEmail) {
-              upsertEmail(message);
-            }
+            upsertEmail(message);
           }
         }
 
@@ -148,7 +147,7 @@ export const searchEmailsTool: ToolDefinition = {
       }
 
       // Filter out sensitive emails unless user opted in to show them
-      const s = globalThis.getGmailSkillState();
+      const s = getGmailSkillState();
       const showSensitive = s.config.showSensitiveMessages ?? false;
       const filteredEmails = showSensitive
         ? emails

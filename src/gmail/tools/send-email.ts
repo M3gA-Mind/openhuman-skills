@@ -1,7 +1,9 @@
 // Tool: gmail-send-email
 // Send emails via Gmail API with support for attachments, HTML/text, and threading
 import { gmailFetch } from '../api';
+import { upsertEmail } from '../db/helpers';
 import '../state';
+import { getGmailSkillState } from '../state';
 
 export const sendEmailTool: ToolDefinition = {
   name: 'gmail-send-email',
@@ -99,7 +101,7 @@ export const sendEmailTool: ToolDefinition = {
       }
 
       // Get user's email from state
-      const s = globalThis.getGmailSkillState();
+      const s = getGmailSkillState();
       const fromEmail = s.config.userEmail || s.profile?.emailAddress;
 
       if (!fromEmail) {
@@ -209,12 +211,7 @@ export const sendEmailTool: ToolDefinition = {
       // Update local database if email was sent successfully
       if (sentMessage.id) {
         const getEmailResponse = await gmailFetch(`/users/me/messages/${sentMessage.id}`);
-        if (getEmailResponse.success) {
-          const upsertEmail = (globalThis as { upsertEmail?: (msg: any) => void }).upsertEmail;
-          if (upsertEmail) {
-            upsertEmail(getEmailResponse.data);
-          }
-        }
+        if (getEmailResponse.success) upsertEmail(getEmailResponse.data);
       }
 
       return JSON.stringify({

@@ -1,5 +1,7 @@
 // ---------------------------------------------------------------------------
 // Gmail API helper (uses oauth.fetch proxy)
+import { getGmailSkillState } from '../state';
+
 // ---------------------------------------------------------------------------
 const GMAIL_API_PREFIX = '/gmail/v1';
 
@@ -39,7 +41,7 @@ export async function gmailFetch(
       timeout: options.timeout || 30,
     });
 
-    const s = globalThis.getGmailSkillState();
+    const s = getGmailSkillState();
 
     if (response.status === 401) {
       const bodyPreview = response.body ? response.body.slice(0, 200) : '(empty)';
@@ -74,7 +76,7 @@ export async function gmailFetch(
     }
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    const s = globalThis.getGmailSkillState();
+    const s = getGmailSkillState();
     s.lastApiError = errorMsg;
     return { success: false, error: { code: 500, message: errorMsg } };
   }

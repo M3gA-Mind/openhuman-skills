@@ -1,7 +1,7 @@
 // Tool: gmail-get-labels
 // Get all Gmail labels with counts and details
 import { gmailFetch } from '../api';
-import '../state';
+import { upsertLabel } from '../db/helpers';
 
 export const getLabelsTool: ToolDefinition = {
   name: 'gmail-get-labels',
@@ -79,10 +79,7 @@ export const getLabelsTool: ToolDefinition = {
       }));
 
       // Update local database
-      const upsertLabel = (globalThis as { upsertLabel?: (label: any) => void }).upsertLabel;
-      if (upsertLabel) {
-        labels.forEach(label => upsertLabel(label));
-      }
+      labels.forEach(label => upsertLabel(label));
 
       // Categorize labels for easier use
       const categorized = {

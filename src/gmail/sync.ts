@@ -1,37 +1,17 @@
 // Gmail email sync: fetch inbox messages and upsert into local DB.
-// Uses gmailFetch and publishSkillState from globalThis (set by index.ts).
-
-declare global {
-  var gmailSync: { performSync: () => Promise<void> };
-}
+import { gmailFetch } from './api';
+import { upsertEmail } from './db/helpers';
+import { getGmailSkillState, publishSkillState } from './state';
+import { GmailMessage } from './types';
 
 export async function onSync(): Promise<void> {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
-  if (!oauth.getCredential() || s.syncStatus.syncInProgress) {
-    return;
-  }
-
-  const gmailFetch = (globalThis as Record<string, unknown>).gmailFetch as (
-    endpoint: string
-  ) => Promise<{ success: boolean; data?: { messages?: { id: string }[] }; error?: unknown }>;
-  const publishSkillState = (globalThis as Record<string, unknown>).publishSkillState as () => void;
-
-  if (!gmailFetch || !publishSkillState) {
-    console.error('[gmail] performSync: gmailFetch or publishSkillState not available');
-    return;
-  }
+  if (!oauth.getCredential() || s.syncStatus.syncInProgress) return;
 
   console.log('[gmail] Starting email sync...');
   s.syncStatus.syncInProgress = true;
   s.syncStatus.newEmailsCount = 0;
-
-  const upsertEmail = (globalThis as { upsertEmail?: (msg: Record<string, unknown>) => void })
-    .upsertEmail;
-  if (!upsertEmail) {
-    s.syncStatus.syncInProgress = false;
-    return;
-  }
 
   try {
     const params: string[] = [];
@@ -46,7 +26,7 @@ export async function onSync(): Promise<void> {
       for (const msgRef of response.data.messages) {
         const msgResponse = await gmailFetch(`/users/me/messages/${msgRef.id}`);
         if (msgResponse.success && msgResponse.data) {
-          upsertEmail(msgResponse.data as Record<string, unknown>);
+          upsertEmail(msgResponse.data as GmailMessage);
           newEmails++;
         }
       }
