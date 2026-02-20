@@ -1,11 +1,16 @@
 // Tool: gmail-get-profile
 // Get Gmail user profile information. Supports optional accessToken (e.g. from frontend after OAuth).
-import '../state';
+import { getGmailSkillState } from '../state';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1';
 
-async function fetchWithToken(accessToken: string, endpoint: string): Promise<{ success: boolean; data?: any; error?: { message: string } }> {
-  const url = endpoint.startsWith('/') ? `${GMAIL_API_BASE}${endpoint}` : `${GMAIL_API_BASE}/${endpoint}`;
+async function fetchWithToken(
+  accessToken: string,
+  endpoint: string
+): Promise<{ success: boolean; data?: any; error?: { message: string } }> {
+  const url = endpoint.startsWith('/')
+    ? `${GMAIL_API_BASE}${endpoint}`
+    : `${GMAIL_API_BASE}/${endpoint}`;
   const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
   try {
     const res = await net.fetch(url, { method: 'GET', headers });
@@ -27,7 +32,10 @@ export const getProfileTool: ToolDefinition = {
   input_schema: {
     type: 'object',
     properties: {
-      accessToken: { type: 'string', description: 'Optional OAuth access token (e.g. from frontend).' },
+      accessToken: {
+        type: 'string',
+        description: 'Optional OAuth access token (e.g. from frontend).',
+      },
     },
     required: [],
   },
@@ -37,8 +45,13 @@ export const getProfileTool: ToolDefinition = {
       const useToken = !!accessToken;
 
       if (!useToken) {
-        const gmailFetch = (globalThis as { gmailFetch?: (endpoint: string) => Promise<{ success: boolean; data?: any; error?: { message: string } }> })
-          .gmailFetch;
+        const gmailFetch = (
+          globalThis as {
+            gmailFetch?: (
+              endpoint: string
+            ) => Promise<{ success: boolean; data?: any; error?: { message: string } }>;
+          }
+        ).gmailFetch;
         if (!gmailFetch) {
           return JSON.stringify({ success: false, error: 'Gmail API helper not available' });
         }
@@ -52,7 +65,13 @@ export const getProfileTool: ToolDefinition = {
 
       const response = useToken
         ? await fetchWithToken(accessToken!, '/users/me/profile')
-        : await (globalThis as { gmailFetch?: (e: string) => Promise<{ success: boolean; data?: any; error?: { message: string } }> }).gmailFetch!('/users/me/profile');
+        : await (
+            globalThis as {
+              gmailFetch?: (
+                e: string
+              ) => Promise<{ success: boolean; data?: any; error?: { message: string } }>;
+            }
+          ).gmailFetch!('/users/me/profile');
 
       if (!response.success) {
         return JSON.stringify({
@@ -64,7 +83,7 @@ export const getProfileTool: ToolDefinition = {
       const profile = response.data;
 
       if (!useToken) {
-        const s = globalThis.getGmailSkillState();
+        const s = getGmailSkillState();
         s.profile = {
           emailAddress: profile.emailAddress,
           messagesTotal: profile.messagesTotal || 0,

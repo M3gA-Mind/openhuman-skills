@@ -1,9 +1,8 @@
 // Gmail skill main entry point
 // Gmail integration with OAuth bridge, email management, and real-time sync
-import { loadGmailProfile } from './api/helpers';
 import { getSyncState, setSyncState } from './db/helpers';
 import { initializeGmailSchema } from './db/schema';
-import { getGmailSkillState, publishSkillState } from './state';
+import { getGmailSkillState } from './state';
 import { isSyncCompleted, onSync, performInitialSync } from './sync';
 import { tools } from './tools';
 import type { SkillConfig } from './types';
@@ -66,14 +65,16 @@ async function gmailFetch(
       });
     }
 
-    const s = globalThis.getGmailSkillState();
+    const s = getGmailSkillState();
 
     if (response.status === 401) {
       const bodyPreview = response.body ? response.body.slice(0, 200) : '(empty)';
       console.log(`[gmail] gmailFetch: 401 Unauthorized path=${path} body=${bodyPreview}`);
     } else if (response.status >= 400) {
       const bodyPreview = response.body ? response.body.slice(0, 200) : '(empty)';
-      console.log(`[gmail] gmailFetch: error path=${path} status=${response.status} body=${bodyPreview}`);
+      console.log(
+        `[gmail] gmailFetch: error path=${path} status=${response.status} body=${bodyPreview}`
+      );
     }
 
     // Update rate limit info from headers
@@ -96,7 +97,7 @@ async function gmailFetch(
     return { success: false, error };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    const s = globalThis.getGmailSkillState();
+    const s = getGmailSkillState();
     s.lastApiError = errorMsg;
     return { success: false, error: { code: 500, message: errorMsg } };
   }
@@ -370,7 +371,7 @@ async function onSetOption(args: { name: string; value: unknown }): Promise<void
 async function loadGmailProfile(): Promise<void> {
   const response = await gmailFetch('/users/me/profile');
   if (response.success) {
-    const s = globalThis.getGmailSkillState();
+    const s = getGmailSkillState();
     s.profile = {
       emailAddress: response.data.emailAddress,
       messagesTotal: response.data.messagesTotal || 0,
@@ -393,7 +394,7 @@ async function loadGmailProfile(): Promise<void> {
  * Called on start(), onOAuthComplete(), and by cron; frontend does not run its own sync.
  */
 async function performSync(): Promise<void> {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
 
   if (!oauth.getCredential() || s.syncStatus.syncInProgress) {
     return;
@@ -446,7 +447,7 @@ async function performSync(): Promise<void> {
 }
 
 function publishSkillState(): void {
-  const s = globalThis.getGmailSkillState();
+  const s = getGmailSkillState();
   const credential = oauth.getCredential();
   const isConnected = !!credential;
 
@@ -461,9 +462,29 @@ function publishSkillState(): void {
         }
       : null;
 
-  let emails: Array<{ id: string; threadId: string; snippet?: string; subject?: string; from?: string; date?: string }> = [];
+  let emails: Array<{
+    id: string;
+    threadId: string;
+    snippet?: string;
+    subject?: string;
+    from?: string;
+    date?: string;
+  }> = [];
   if (isConnected) {
-    const getEmailsFromDb = (globalThis as { getEmails?: (opts: { maxResults?: number }) => Array<{ id: string; thread_id: string; subject: string; sender_email: string; date: number; snippet: string }> }).getEmails;
+    const getEmailsFromDb = (
+      globalThis as {
+        getEmails?: (opts: {
+          maxResults?: number;
+        }) => Array<{
+          id: string;
+          thread_id: string;
+          subject: string;
+          sender_email: string;
+          date: number;
+          snippet: string;
+        }>;
+      }
+    ).getEmails;
     if (getEmailsFromDb) {
       const rows = getEmailsFromDb({ maxResults: s.config.maxEmailsPerSync });
       emails = rows.map(row => ({
@@ -504,6 +525,7 @@ function publishSkillState(): void {
 
 // Expose helper functions on globalThis for tools to use
 const _g = globalThis as Record<string, unknown>;
+_g.getGmailSkillState = getGmailSkillState;
 _g.gmailFetch = gmailFetch;
 _g.performSync = performSync;
 _g.publishSkillState = publishSkillState;

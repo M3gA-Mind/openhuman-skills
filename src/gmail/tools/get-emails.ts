@@ -1,7 +1,7 @@
 // Tool: gmail-get-emails
 // Get emails with filtering and search. Works with either OAuth credential (skill) or a provided accessToken (frontend after OAuth).
 import { isSensitiveText } from '../../helpers';
-import '../state';
+import { getGmailSkillState } from '../state';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1';
 
@@ -169,9 +169,11 @@ export const getEmailsTool: ToolDefinition = {
     if (useToken) {
       listResponse = await fetchWithToken(accessToken!, listEndpoint);
     } else {
-      const gmailFetch = (globalThis as {
-        gmailFetch?: (endpoint: string, options?: any) => Promise<GmailFetchResult>;
-      }).gmailFetch!;
+      const gmailFetch = (
+        globalThis as {
+          gmailFetch?: (endpoint: string, options?: any) => Promise<GmailFetchResult>;
+        }
+      ).gmailFetch!;
       listResponse = await gmailFetch(listEndpoint);
     }
 
@@ -211,9 +213,11 @@ export const getEmailsTool: ToolDefinition = {
       if (useToken) {
         msgResponse = await fetchWithToken(accessToken!, msgEndpoint);
       } else {
-        const gmailFetch = (globalThis as {
-          gmailFetch?: (endpoint: string, options?: any) => Promise<GmailFetchResult>;
-        }).gmailFetch!;
+        const gmailFetch = (
+          globalThis as {
+            gmailFetch?: (endpoint: string, options?: any) => Promise<GmailFetchResult>;
+          }
+        ).gmailFetch!;
         msgResponse = await gmailFetch(msgEndpoint);
       }
 
@@ -230,15 +234,13 @@ export const getEmailsTool: ToolDefinition = {
       }
     }
 
-    const s = globalThis.getGmailSkillState();
+    const s = getGmailSkillState();
     const showSensitive = s.config.showSensitiveMessages ?? false;
     const filteredEmails = showSensitive
       ? emails
       : emails.filter(
           (e: Record<string, unknown>) =>
-            !isSensitiveText(
-              ((e.subject as string) || '') + ' ' + ((e.snippet as string) || '')
-            )
+            !isSensitiveText(((e.subject as string) || '') + ' ' + ((e.snippet as string) || ''))
         );
 
     return JSON.stringify({
