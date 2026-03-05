@@ -1,5 +1,6 @@
 // Tool: gmail-get-emails
 // Get emails with filtering and search. Works with either OAuth credential (skill) or a provided accessToken (frontend after OAuth).
+import { upsertEmail } from '../db/helpers';
 import { isSensitiveText } from '../../helpers';
 import { getGmailSkillState } from '../state';
 
@@ -226,10 +227,7 @@ export const getEmailsTool: ToolDefinition = {
         emails.push(messageToEmailRow(message));
 
         if (!useToken) {
-          const upsertEmail = (globalThis as { upsertEmail?: (msg: any) => void }).upsertEmail;
-          if (upsertEmail) {
-            upsertEmail(message);
-          }
+          upsertEmail(message);
         }
       }
     }
