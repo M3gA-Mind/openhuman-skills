@@ -247,10 +247,7 @@ export function buildRichText(text: string): unknown[] {
  * Do not add "object" or "children" to avoid validation errors.
  */
 export function buildParagraphBlock(text: string): Record<string, unknown> {
-  return {
-    type: 'paragraph',
-    paragraph: { rich_text: buildRichText(text) },
-  };
+  return { type: 'paragraph', paragraph: { rich_text: buildRichText(text) } };
 }
 
 // ---------------------------------------------------------------------------

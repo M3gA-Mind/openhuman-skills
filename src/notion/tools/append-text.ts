@@ -30,14 +30,14 @@ export const appendTextTool: ToolDefinition = {
   },
   async execute(args: Record<string, unknown>): Promise<string> {
     try {
-      const blockId =
-        (args.block_id as string) || (args.page_id as string) || '';
+      const blockId = (args.block_id as string) || (args.page_id as string) || '';
       const text = String(args.text ?? args.content ?? '').trim();
 
       if (!blockId) {
         return JSON.stringify({
           success: false,
-          error: 'block_id or page_id is required. Use the page id from list-all-pages or get-page.',
+          error:
+            'block_id or page_id is required. Use the page id from list-all-pages or get-page.',
         });
       }
       if (!text) {

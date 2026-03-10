@@ -238,7 +238,13 @@ async function publishState(): Promise<void> {
   const isConnected = !!oauth.getCredential();
 
   // Fetch recent pages from local DB (populated after sync)
-  let pages: Array<{ id: string; title: string; url: string | null; last_edited_time: string; content_text: string | null }> = [];
+  let pages: Array<{
+    id: string;
+    title: string;
+    url: string | null;
+    last_edited_time: string;
+    content_text: string | null;
+  }> = [];
   if (isConnected) {
     try {
       const localPages = getLocalPages({ limit: 100 });

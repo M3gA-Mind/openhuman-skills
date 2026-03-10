@@ -47,9 +47,7 @@ export const listAllPagesTool: ToolDefinition = {
         source: 'local',
       });
     } catch (e) {
-      return JSON.stringify({
-        error: e instanceof Error ? e.message : String(e),
-      });
+      return JSON.stringify({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 };

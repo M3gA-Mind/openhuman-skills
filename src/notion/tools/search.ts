@@ -69,10 +69,7 @@ export const searchTool: ToolDefinition = {
       const body: SearchRequest = { page_size: pageSize };
       if (query) body.query = query;
       if (filter) {
-        body.filter = {
-          property: 'object',
-          value: filter === 'database' ? 'database' : 'page',
-        };
+        body.filter = { property: 'object', value: filter === 'database' ? 'database' : 'page' };
       }
       body.sort = {
         direction: sortDirection === 'ascending' ? 'ascending' : 'descending',

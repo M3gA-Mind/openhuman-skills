@@ -16,7 +16,10 @@ export const createCommentTool: ToolDefinition = {
     type: 'object',
     properties: {
       page_id: { type: 'string', description: 'Page ID to create a comment on (new discussion)' },
-      block_id: { type: 'string', description: 'Block ID to comment on (optional, use instead of page_id)' },
+      block_id: {
+        type: 'string',
+        description: 'Block ID to comment on (optional, use instead of page_id)',
+      },
       discussion_id: {
         type: 'string',
         description: 'Discussion ID to reply to an existing thread (use instead of page_id)',
@@ -38,16 +41,15 @@ export const createCommentTool: ToolDefinition = {
       }
       if (hasParent && discussionId) {
         return JSON.stringify({
-          error: 'Provide only one: page_id/block_id OR discussion_id (not both). See https://developers.notion.com/reference/create-a-comment',
+          error:
+            'Provide only one: page_id/block_id OR discussion_id (not both). See https://developers.notion.com/reference/create-a-comment',
         });
       }
       if (!text) {
         return JSON.stringify({ error: 'text is required' });
       }
 
-      const body: Record<string, unknown> = {
-        rich_text: buildRichText(text),
-      };
+      const body: Record<string, unknown> = { rich_text: buildRichText(text) };
       if (discussionId) {
         body.discussion_id = discussionId;
       } else if (blockId) {
@@ -59,10 +61,7 @@ export const createCommentTool: ToolDefinition = {
       const comment = await notionApi.createComment(body);
       const rec = comment as Record<string, unknown>;
 
-      return JSON.stringify({
-        object: rec.object ?? 'comment',
-        id: rec.id,
-      });
+      return JSON.stringify({ object: rec.object ?? 'comment', id: rec.id });
     } catch (e) {
       return JSON.stringify({ error: formatApiError(e) });
     }

@@ -22,10 +22,7 @@ export const deleteBlockTool: ToolDefinition = {
       const result = await notionApi.deleteBlock(blockId);
       const rec = result as Record<string, unknown>;
 
-      return JSON.stringify({
-        object: rec.object ?? 'block',
-        id: rec.id,
-      });
+      return JSON.stringify({ object: rec.object ?? 'block', id: rec.id });
     } catch (e) {
       return JSON.stringify({ error: formatApiError(e) });
     }

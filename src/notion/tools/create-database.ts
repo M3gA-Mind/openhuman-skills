@@ -56,10 +56,7 @@ export const createDatabaseTool: ToolDefinition = {
       const dbResult = await notionApi.createDatabase(body as Record<string, unknown>);
       const rec = dbResult as Record<string, unknown>;
 
-      return JSON.stringify({
-        object: rec.object ?? 'database',
-        id: rec.id,
-      });
+      return JSON.stringify({ object: rec.object ?? 'database', id: rec.id });
     } catch (e) {
       return JSON.stringify({ error: formatApiError(e) });
     }
