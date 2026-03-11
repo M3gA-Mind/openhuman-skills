@@ -5,11 +5,11 @@
 import { notionApi } from './api/index';
 import { getEntityCounts, getLocalPages } from './db/helpers';
 import { initializeNotionSchema } from './db/schema';
+import { formatUserSummary } from './helpers';
 import { getNotionSkillState } from './state';
 import type { NotionSkillConfig } from './state';
 import { performSync } from './sync';
 import tools from './tools/index';
-import { formatUserSummary } from './helpers';
 
 async function init(): Promise<void> {
   console.log('[notion] Initializing');

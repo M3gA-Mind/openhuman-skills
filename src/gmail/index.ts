@@ -361,9 +361,10 @@ async function performSync(): Promise<void> {
 
     const response = await gmailFetch(`/users/me/messages?${params.join('&')}`);
 
-    const list = response.success && Array.isArray(response.data?.messages)
-      ? (response.data.messages as GmailMessageListItem[])
-      : [];
+    const list =
+      response.success && Array.isArray(response.data?.messages)
+        ? (response.data.messages as GmailMessageListItem[])
+        : [];
     s.lastMessageList = list;
     s.syncStatus.newEmailsCount = list.length;
     s.syncStatus.totalEmails = s.profile?.messagesTotal ?? list.length;
