@@ -3,10 +3,7 @@
 // Skips emails already in the local DB to avoid redundant API calls.
 import { gmailFetch } from './api';
 import { loadGmailProfile } from './api/helpers';
-import {
-  getEmailById,
-  upsertEmail,
-} from './db/helpers';
+import { getEmailById, upsertEmail } from './db/helpers';
 import { getGmailSkillState, publishSkillState } from './state';
 import type { GmailMessage } from './types';
 

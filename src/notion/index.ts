@@ -156,7 +156,7 @@ async function onDisconnect(): Promise<void> {
 async function onSync(): Promise<void> {
   console.log('[notion] Syncing');
 
-    // Fetch the Notion profile immediately and publish it into state so the
+  // Fetch the Notion profile immediately and publish it into state so the
   // workspace/user context is available to the host.
   try {
     const user = await notionApi.getUser('me');
