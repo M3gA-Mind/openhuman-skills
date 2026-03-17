@@ -44,7 +44,7 @@ src/<skill-name>/
 | ------------------------------------- | -------------------------------------------------------------- | -------- |
 | [`server-ping`](src/server-ping/)     | Monitors server health with configurable ping intervals        | Required |
 | [`notion`](src/notion/)               | Notion integration with 22+ tools for pages, databases, blocks | Required |
-| [`telegram`](src/telegram/)           | Telegram integration via TDLib with 50+ tools                  | Required |
+| [`telegram`](src/telegram/)           | Telegram integration with 50+ tools                            | Required |
 | [`gmail`](src/gmail/)                 | Gmail integration with OAuth2 and email management             | Required |
 | [`example-skill`](src/example-skill/) | Kitchen-sink example demonstrating all APIs and patterns       | Required |
 

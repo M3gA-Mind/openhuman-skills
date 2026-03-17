@@ -514,7 +514,7 @@ The Telegram skill demonstrates a real-time sync with event-driven updates:
 
 ```
 Initial sync: Load chats (100) → Load messages (100/chat, top 20) → Load contacts
-Ongoing: TDLib update loop → dispatchUpdate() → upsert to DB per event
+Ongoing: Update loop → dispatchUpdate() → upsert to DB per event
 ```
 
 ### Incremental Sync
