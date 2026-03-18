@@ -4,11 +4,19 @@
 // Notion API helpers
 // ---------------------------------------------------------------------------
 
-/** Max retries on 429 rate-limit responses. */
+/** Max retries on 429 rate-limit and Cloudflare transient errors. */
 const MAX_RETRIES = 3;
 
 /** Default backoff in ms when Retry-After header is absent. */
 const DEFAULT_BACKOFF_MS = 5_000;
+
+/**
+ * Cloudflare-originated status codes that are transient and safe to retry.
+ * 520 – Unknown Error, 521 – Web Server Down, 522 – Connection Timed Out,
+ * 523 – Origin Unreachable, 524 – A Timeout Occurred, 525 – SSL Handshake Failed,
+ * 526 – Invalid SSL Certificate, 527 – Railgun Listener Error.
+ */
+const CLOUDFLARE_RETRYABLE = new Set([520, 521, 522, 523, 524, 525, 526, 527]);
 
 /** Notion API version constants */
 const LEGACY_API_VERSION = '2022-06-28';
@@ -69,6 +77,19 @@ export async function notionFetch<T>(
       const waitMs = retryAfter
         ? parseInt(retryAfter, 10) * 1000
         : DEFAULT_BACKOFF_MS * (attempt + 1);
+      console.warn(
+        `[notion][helpers] 429 rate-limited — waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+      );
+      await sleep(waitMs);
+      continue;
+    }
+
+    // -- 5xx Cloudflare transient errors: exponential backoff and retry ------
+    if (CLOUDFLARE_RETRYABLE.has(response.status) && attempt < MAX_RETRIES) {
+      const waitMs = DEFAULT_BACKOFF_MS * Math.pow(2, attempt); // 5s, 10s, 20s
+      console.warn(
+        `[notion][helpers] Cloudflare ${response.status} (transient) — waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+      );
       await sleep(waitMs);
       continue;
     }
@@ -92,8 +113,10 @@ export async function notionFetch<T>(
     return parsed;
   }
 
-  // Exhausted retries (only reachable after repeated 429s)
-  throw new Error('Notion API error: 429 — rate limit exceeded after retries');
+  // Exhausted retries (reachable after repeated 429s or Cloudflare 5xx errors)
+  throw new Error(
+    'Notion API error: request failed after maximum retries (rate limit or upstream timeout)'
+  );
 }
 
 export function formatApiError(error: unknown): string {
@@ -107,6 +130,9 @@ export function formatApiError(error: unknown): string {
   }
   if (message.includes('429')) {
     return 'Rate limited. Please try again in a moment.';
+  }
+  if (/52[0-7]/.test(message)) {
+    return 'Notion is temporarily unreachable (Cloudflare gateway error). The request will be retried automatically.';
   }
   if (message.includes('403')) {
     return 'Forbidden. The integration may not have access to this resource.';

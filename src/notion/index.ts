@@ -5,7 +5,7 @@
 import { notionApi } from './api/index';
 import { getEntityCounts, getLocalPages } from './db/helpers';
 import { initializeNotionSchema } from './db/schema';
-import { formatUserSummary } from './helpers';
+import { formatUserSummary, notionFetch } from './helpers';
 import { getNotionSkillState } from './state';
 import type { NotionSkillConfig } from './state';
 import { performSync } from './sync';
@@ -310,21 +310,20 @@ async function onPing(): Promise<PingResult> {
     return { ok: false, errorType: 'auth', errorMessage: 'No OAuth credential' };
   }
   try {
-    const response = await oauth.fetch('/v1/users?page_size=1');
-    console.log('[notion] onPing response: ', response.body);
-    if (response.status === 401 || response.status === 403) {
-      return { ok: false, errorType: 'auth', errorMessage: `Notion returned ${response.status}` };
-    }
-    if (response.status >= 400) {
-      return {
-        ok: false,
-        errorType: 'network',
-        errorMessage: `Notion returned ${response.status}`,
-      };
-    }
+    // Use notionFetch so transient Cloudflare 52x errors are retried automatically
+    // before reporting a failure (up to MAX_RETRIES times with exponential backoff).
+    await notionFetch('/users?page_size=1');
+    console.log('[notion] onPing: ok');
     return { ok: true };
   } catch (err) {
-    return { ok: false, errorType: 'network', errorMessage: String(err) };
+    const msg = String(err);
+    console.warn('[notion] onPing error:', msg);
+    // Treat auth errors (401/403) as auth failures so the skill is stopped.
+    if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('unauthorized')) {
+      return { ok: false, errorType: 'auth', errorMessage: msg };
+    }
+    // Everything else (522, timeouts, network errors) is a transient network failure.
+    return { ok: false, errorType: 'network', errorMessage: msg };
   }
 }
 

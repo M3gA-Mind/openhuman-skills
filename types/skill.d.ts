@@ -36,7 +36,7 @@ interface Skill {
   onDisconnect?: () => Promise<void>;
   /**
    * Called when an unhandled error occurs during async operations
-   * (e.g. TDLib auth failures, network errors, promise rejections).
+   * (e.g. network errors, promise rejections).
    * Skills should use this to update their state and surface the error to the user.
    */
   onError?: (args: SkillErrorArgs) => Promise<void>;
