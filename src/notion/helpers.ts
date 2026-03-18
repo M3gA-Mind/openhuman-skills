@@ -77,7 +77,9 @@ export async function notionFetch<T>(
       const waitMs = retryAfter
         ? parseInt(retryAfter, 10) * 1000
         : DEFAULT_BACKOFF_MS * (attempt + 1);
-      console.warn(`[notion][helpers] 429 rate-limited — waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      console.warn(
+        `[notion][helpers] 429 rate-limited — waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+      );
       await sleep(waitMs);
       continue;
     }
@@ -112,7 +114,9 @@ export async function notionFetch<T>(
   }
 
   // Exhausted retries (reachable after repeated 429s or Cloudflare 5xx errors)
-  throw new Error('Notion API error: request failed after maximum retries (rate limit or upstream timeout)');
+  throw new Error(
+    'Notion API error: request failed after maximum retries (rate limit or upstream timeout)'
+  );
 }
 
 export function formatApiError(error: unknown): string {

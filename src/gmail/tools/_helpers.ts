@@ -28,8 +28,7 @@ export async function gmailNetFetch<T = unknown>(
     accessToken?: string;
   } = {}
 ): Promise<GmailFetchResult<T>> {
-  const token =
-    options.accessToken || (oauth.getCredential()?.accessToken as string | undefined);
+  const token = options.accessToken || (oauth.getCredential()?.accessToken as string | undefined);
 
   if (!token) {
     return {
@@ -45,14 +44,11 @@ export async function gmailNetFetch<T = unknown>(
     console.log('gmailNetFetch', url, options);
     const res = await net.fetch(url, {
       method: options.method || 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: options.body,
       timeout: options.timeout || FETCH_TIMEOUT_SEC,
     });
-    console.log("🚀 ~ gmailNetFetch ~ res:", res)
+    console.log('🚀 ~ gmailNetFetch ~ res:', res);
 
     if (res.status >= 200 && res.status < 300) {
       const data = res.body ? (JSON.parse(res.body as string) as T) : undefined;
