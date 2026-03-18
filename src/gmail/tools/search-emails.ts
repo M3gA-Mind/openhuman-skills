@@ -1,10 +1,10 @@
 // Tool: search-emails
 // Advanced email search using Gmail query syntax
 import { isSensitiveText } from '../../helpers';
-import { gmailFetch } from '../api';
 import { upsertEmail } from '../db/helpers';
 import { getGmailSkillState } from '../state';
 import type { GmailMessage } from '../types';
+import { gmailNetFetch } from './_helpers';
 
 export const searchEmailsTool: ToolDefinition = {
   name: 'search-emails',
@@ -34,13 +34,6 @@ export const searchEmailsTool: ToolDefinition = {
   },
   async execute(args: Record<string, unknown>): Promise<string> {
     try {
-      if (!oauth.getCredential()) {
-        return JSON.stringify({
-          success: false,
-          error: 'Gmail not connected. Complete OAuth setup first.',
-        });
-      }
-
       const query = args.query as string;
       if (!query) {
         return JSON.stringify({ success: false, error: 'Search query is required' });
@@ -62,7 +55,7 @@ export const searchEmailsTool: ToolDefinition = {
       }
 
       // Search messages
-      const searchResponse = await gmailFetch<{
+      const searchResponse = await gmailNetFetch<{
         messages?: Array<{ id: string; threadId: string }>;
         nextPageToken?: string;
         resultSizeEstimate: number;
@@ -95,7 +88,7 @@ export const searchEmailsTool: ToolDefinition = {
         const batch = searchResults.messages.slice(i, i + batchSize);
 
         for (const msgRef of batch) {
-          const msgResponse = await gmailFetch<GmailMessage>(
+          const msgResponse = await gmailNetFetch<GmailMessage>(
             `/users/me/messages/${msgRef.id}?format=metadata`
           );
 

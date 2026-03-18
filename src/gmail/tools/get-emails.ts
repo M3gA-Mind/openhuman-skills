@@ -1,12 +1,10 @@
 // Tool: gmail-get-emails
-// Get emails with filtering and search. Works with either OAuth credential (skill) or a provided accessToken (frontend after OAuth).
+// Get emails with filtering and search.
 import { isSensitiveText } from '../../helpers';
 import { upsertEmail } from '../db/helpers';
 import { getGmailSkillState } from '../state';
-
-const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1';
-
-type GmailFetchResult = { success: boolean; data?: any; error?: { code: number; message: string } };
+import { gmailNetFetch } from './_helpers';
+import type { GmailFetchResult } from './_helpers';
 
 function buildListParams(args: Record<string, unknown>): string[] {
   const params: string[] = [];
@@ -30,35 +28,6 @@ function buildListParams(args: Record<string, unknown>): string[] {
     params.push(`pageToken=${encodeURIComponent(args.page_token as string)}`);
   }
   return params;
-}
-
-/** Per-request timeout in seconds so a slow/hanging Gmail API call doesn't cause "Tool async execution timed out". */
-const FETCH_TIMEOUT_SEC = 20;
-
-async function fetchWithToken(
-  accessToken: string,
-  endpoint: string,
-  _options?: { method?: string; body?: string }
-): Promise<GmailFetchResult> {
-  const url = endpoint.startsWith('/')
-    ? `${GMAIL_API_BASE}${endpoint}`
-    : `${GMAIL_API_BASE}/${endpoint}`;
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-  };
-  try {
-    const res = await net.fetch(url, { method: 'GET', headers, timeout: FETCH_TIMEOUT_SEC });
-    if (res.status < 200 || res.status >= 300) {
-      const body = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
-      return { success: false, error: { code: res.status, message: body } };
-    }
-    const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
-    return { success: true, data };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, error: { code: 500, message } };
-  }
 }
 
 function hasAttachments(message: any): boolean {
@@ -147,36 +116,11 @@ export const getEmailsTool: ToolDefinition = {
   },
   async execute(args: Record<string, unknown>): Promise<string> {
     const accessToken = args.accessToken as string | undefined;
-    const useToken = !!accessToken;
-
-    if (!useToken) {
-      const gmailFetch = (globalThis as { gmailFetch?: (endpoint: string, options?: any) => any })
-        .gmailFetch;
-      if (!gmailFetch) {
-        return JSON.stringify({ success: false, error: 'Gmail API helper not available' });
-      }
-      if (!oauth.getCredential()) {
-        return JSON.stringify({
-          success: false,
-          error: 'Gmail not connected. Complete OAuth setup first.',
-        });
-      }
-    }
 
     const params = buildListParams(args);
     const listEndpoint = `/users/me/messages?${params.join('&')}`;
 
-    let listResponse: GmailFetchResult;
-    if (useToken) {
-      listResponse = await fetchWithToken(accessToken!, listEndpoint);
-    } else {
-      const gmailFetch = (
-        globalThis as {
-          gmailFetch?: (endpoint: string, options?: any) => Promise<GmailFetchResult>;
-        }
-      ).gmailFetch!;
-      listResponse = await gmailFetch(listEndpoint);
-    }
+    const listResponse: GmailFetchResult = await gmailNetFetch(listEndpoint, { accessToken });
 
     if (!listResponse.success) {
       return JSON.stringify({
@@ -205,30 +149,13 @@ export const getEmailsTool: ToolDefinition = {
     const emails: Record<string, unknown>[] = [];
 
     for (const msgRef of messageList.messages) {
-      // When using token, request metadata only to reduce payload and avoid timeout
-      const msgEndpoint = useToken
-        ? `/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
-        : `/users/me/messages/${msgRef.id}`;
-      let msgResponse: GmailFetchResult;
-
-      if (useToken) {
-        msgResponse = await fetchWithToken(accessToken!, msgEndpoint);
-      } else {
-        const gmailFetch = (
-          globalThis as {
-            gmailFetch?: (endpoint: string, options?: any) => Promise<GmailFetchResult>;
-          }
-        ).gmailFetch!;
-        msgResponse = await gmailFetch(msgEndpoint);
-      }
+      const msgEndpoint = `/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`;
+      const msgResponse: GmailFetchResult = await gmailNetFetch(msgEndpoint, { accessToken });
 
       if (msgResponse.success && msgResponse.data) {
-        const message = msgResponse.data;
+        const message = msgResponse.data as any;
         emails.push(messageToEmailRow(message));
-
-        if (!useToken) {
-          upsertEmail(message);
-        }
+        upsertEmail(message);
       }
     }
 

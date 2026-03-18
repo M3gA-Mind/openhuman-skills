@@ -1,9 +1,9 @@
 // Tool: send-email
 // Send emails via Gmail API with support for attachments, HTML/text, and threading
-import { gmailFetch } from '../api';
 import { upsertEmail } from '../db/helpers';
 import { getGmailSkillState } from '../state';
 import type { GmailMessage } from '../types';
+import { gmailNetFetch } from './_helpers';
 
 export const sendEmailTool: ToolDefinition = {
   name: 'send-email',
@@ -71,13 +71,6 @@ export const sendEmailTool: ToolDefinition = {
   },
   async execute(args: Record<string, unknown>): Promise<string> {
     try {
-      if (!oauth.getCredential()) {
-        return JSON.stringify({
-          success: false,
-          error: 'Gmail not connected. Complete OAuth setup first.',
-        });
-      }
-
       // Validate required fields
       const to = args.to as Array<{ email: string; name?: string }>;
       const subject = args.subject as string;
@@ -194,7 +187,7 @@ export const sendEmailTool: ToolDefinition = {
       }
 
       // Send email
-      const response = await gmailFetch<GmailMessage>('/users/me/messages/send', {
+      const response = await gmailNetFetch<GmailMessage>('/users/me/messages/send', {
         method: 'POST',
         body: JSON.stringify(requestBody),
       });
@@ -210,7 +203,7 @@ export const sendEmailTool: ToolDefinition = {
 
       // Update local database if email was sent successfully
       if (sentMessage && sentMessage.id) {
-        const getEmailResponse = await gmailFetch<GmailMessage>(
+        const getEmailResponse = await gmailNetFetch<GmailMessage>(
           `/users/me/messages/${sentMessage.id}`
         );
         if (getEmailResponse.success && getEmailResponse.data) {
