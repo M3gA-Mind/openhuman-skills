@@ -1,10 +1,10 @@
 // Tool: search-emails
 // Advanced email search using Gmail query syntax
 import { isSensitiveText } from '../../helpers';
+import { gmailFetch } from '../api/index';
 import { upsertEmail } from '../db/helpers';
 import { getGmailSkillState } from '../state';
 import type { GmailMessage } from '../types';
-import { gmailFetch } from '../api/index';
 
 export const searchEmailsTool: ToolDefinition = {
   name: 'search-emails',

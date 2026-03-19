@@ -203,9 +203,7 @@ export const sendEmailTool: ToolDefinition = {
 
       // Update local database if email was sent successfully
       if (sentMessage && sentMessage.id) {
-        const getEmailResponse = await gmailFetch(
-          `/users/me/messages/${sentMessage.id}`
-        );
+        const getEmailResponse = await gmailFetch(`/users/me/messages/${sentMessage.id}`);
         if (getEmailResponse.success && getEmailResponse.data) {
           upsertEmail(getEmailResponse.data as GmailMessage);
         }
