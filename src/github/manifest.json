@@ -5,7 +5,7 @@
   "entry": "index.js",
   "version": "1.0.0",
   "description": "GitHub integration via REST API — 72 tools for repos, issues, PRs, releases, gists, actions, search, notifications, and raw API access.",
-  "auto_start": true,
+  "auto_start": false,
   "ignoreInProduction": true,
   "platforms": ["windows", "macos", "linux"],
   "env": ["GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET"],
