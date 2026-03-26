@@ -37,21 +37,21 @@ OpenHuman is not a chatbot, browser extension, or cloud-only service. It is a na
 
 ### macOS
 
-| Chip                        | Download                                                                                                        |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Chip                        | Download                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Apple Silicon (M1/M2/M3/M4) | [`.dmg` (aarch64)](https://github.com/tinyhumansai/openhuman/releases/latest/download/OpenHuman_aarch64.dmg) |
 | Intel                       | [`.dmg` (x64)](https://github.com/tinyhumansai/openhuman/releases/latest/download/OpenHuman_x64.dmg)         |
 
 ### Windows
 
-| Architecture | Download                                                                                                |
-| ------------ | ------------------------------------------------------------------------------------------------------- |
+| Architecture | Download                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------- |
 | x64          | [`.msi`](https://github.com/tinyhumansai/openhuman/releases/latest/download/OpenHuman_x64_en-US.msi) |
 
 ### Linux
 
-| Format          | Download                                                                                                      |
-| --------------- | ------------------------------------------------------------------------------------------------------------- |
+| Format          | Download                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
 | Debian / Ubuntu | [`.deb` (amd64)](https://github.com/tinyhumansai/openhuman/releases/latest/download/OpenHuman_amd64.deb)   |
 | Fedora / RHEL   | [`.rpm` (x86_64)](https://github.com/tinyhumansai/openhuman/releases/latest/download/OpenHuman_x86_64.rpm) |
 | Universal       | [`.AppImage`](https://github.com/tinyhumansai/openhuman/releases/latest/download/OpenHuman_amd64.AppImage) |
