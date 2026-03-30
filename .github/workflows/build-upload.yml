@@ -35,8 +35,8 @@ jobs:
       - name: Build all skills and generate registry
         run: yarn build
         env:
-          # URLs match files on the `build` branch (raw CDN-friendly).
-          SKILLS_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/build
+          # raw.githubusercontent.com branch ref (see https://docs.github.com/en/repositories/working-with-files/using-files/getting-permanent-links-to-files)
+          SKILLS_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/build
 
       - name: Prepare publish directory
         run: |

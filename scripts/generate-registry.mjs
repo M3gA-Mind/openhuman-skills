@@ -7,7 +7,8 @@
  * and produces a registry.json file listing all available skills.
  *
  * Environment variables:
- *   SKILLS_BASE_URL - Base URL for download links (default: https://skills.openhuman.ai)
+ *   SKILLS_BASE_URL - Base URL for download links (default: https://skills.openhuman.ai).
+ *     For GitHub raw on branch `build`: https://raw.githubusercontent.com/OWNER/REPO/refs/heads/build
  *
  * Third-party skills can be added via third-party-skills.json at the repo root.
  */
@@ -19,7 +20,7 @@ import { join, resolve } from 'node:path';
 const SKILLS_DIR = resolve('skills');
 const THIRD_PARTY_PATH = resolve('third-party-skills.json');
 const OUTPUT_PATH = join(SKILLS_DIR, 'registry.json');
-const BASE_URL = process.env.SKILLS_BASE_URL || 'https://skills.openhuman.ai';
+const BASE_URL = process.env.SKILLS_BASE_URL || 'https://raw.githubusercontent.com/tinyhumansai/openhuman-skills/refs/heads/build';
 
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
