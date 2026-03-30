@@ -1,4 +1,6 @@
-name: Build skills and deploy to GitHub Pages
+# Publishes compiled skills + registry.json to the orphan branch `build` (root contains `skills/`).
+# Optional: point GitHub Pages at branch `build` / root if you want https://<owner>.github.io/<repo>/skills/...
+name: Build skills and publish to build branch
 
 on:
   push:
@@ -6,17 +8,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: build-branch
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build skills and registry
+  build-and-publish:
+    name: Build and push to build branch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,26 +35,20 @@ jobs:
       - name: Build all skills and generate registry
         run: yarn build
         env:
-          SKILLS_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          # URLs match files on the `build` branch (raw CDN-friendly).
+          SKILLS_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/build
 
-      - name: Prepare GitHub Pages site
+      - name: Prepare publish directory
         run: |
           mkdir -p gh-pages-out
           mv skills gh-pages-out/
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Push to build branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: gh-pages-out
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages-out
+          publish_branch: build
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'chore: update build branch [skip ci]'
