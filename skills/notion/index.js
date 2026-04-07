@@ -18,7 +18,7 @@ var __skill_bundle = (() => {
  };
  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
- // skills-ts-out/notion/index.js
+ // skills-ts-out/core/notion/index.js
  var index_exports = {};
  __export(index_exports, {
   default: () => index_default
@@ -571,7 +571,7 @@ var __skill_bundle = (() => {
   global.Buffer = Buffer2;
  }
 
- // skills-ts-out/notion/helpers.js
+ // skills-ts-out/core/notion/helpers.js
  var MAX_RETRIES = 3;
  var DEFAULT_BACKOFF_MS = 5e3;
  var CLOUDFLARE_RETRYABLE = /* @__PURE__ */ new Set([520, 521, 522, 523, 524, 525, 526, 527]);
@@ -581,22 +581,42 @@ var __skill_bundle = (() => {
  function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
  }
+ function getNotionAuth() {
+  const authCred = auth.getCredential();
+  if (authCred && authCred.mode !== "managed") {
+   const creds = authCred.credentials;
+   const token = creds.api_token ?? creds.content ?? creds.access_token;
+   if (token) {
+    return { type: "token", token };
+   }
+  }
+  const oauthCred = oauth.getCredential();
+  if (oauthCred) {
+   if (oauthCred.accessToken) {
+    return { type: "token", token: oauthCred.accessToken };
+   }
+   return { type: "proxy" };
+  }
+  return null;
+ }
+ function isNotionConnected() {
+  return getNotionAuth() !== null;
+ }
  async function notionFetch(endpoint, options = {}) {
-  const credential = oauth.getCredential();
-  if (!credential)
+  const notionAuth = getNotionAuth();
+  if (!notionAuth)
    throw new Error("Notion not connected. Please complete setup first.");
   const method = options.method || "GET";
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const useAccessToken = !!credential.accessToken;
   const apiVersion = options.apiVersion || await detectApiVersion();
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
    let response;
-   if (useAccessToken) {
+   if (notionAuth.type === "token") {
     const url = `https://api.notion.com/v1${path}`;
     response = await net.fetch(url, {
      method,
      headers: {
-      Authorization: `Bearer ${credential.accessToken}`,
+      Authorization: `Bearer ${notionAuth.token}`,
       "Content-Type": "application/json",
       "Notion-Version": apiVersion
      },
@@ -812,24 +832,22 @@ var __skill_bundle = (() => {
   if (cachedApiVersion) {
    return cachedApiVersion;
   }
-  const credential = oauth.getCredential();
-  if (!credential) {
+  const notionAuth = getNotionAuth();
+  if (!notionAuth) {
    cachedApiVersion = LEGACY_API_VERSION;
    return cachedApiVersion;
   }
   try {
-   const useAccessToken = !!credential.accessToken;
    let response;
-   if (useAccessToken) {
+   if (notionAuth.type === "token") {
     response = await net.fetch("https://api.notion.com/v1/users?page_size=1", {
      method: "GET",
      headers: {
-      Authorization: `Bearer ${credential.accessToken}`,
+      Authorization: `Bearer ${notionAuth.token}`,
       "Content-Type": "application/json",
       "Notion-Version": CURRENT_API_VERSION
      },
      timeout: 10
-     // Quick timeout for version detection
     });
    } else {
     response = await oauth.fetch("/v1/users?page_size=1", {
@@ -850,6 +868,9 @@ var __skill_bundle = (() => {
    console.log(`[notion][helpers] Error detecting API version, using legacy: ${LEGACY_API_VERSION}`, error);
   }
   return cachedApiVersion;
+ }
+ function resetApiVersionCache() {
+  cachedApiVersion = null;
  }
  async function resolveDataSourceId(databaseId) {
   const apiVersion = await detectApiVersion();
@@ -883,12 +904,12 @@ var __skill_bundle = (() => {
   return apiVersion === CURRENT_API_VERSION;
  }
 
- // skills-ts-out/notion/api/client.js
+ // skills-ts-out/core/notion/api/client.js
  async function apiFetch(endpoint, options) {
   return await notionFetch(endpoint, options);
  }
 
- // skills-ts-out/notion/api/blocks.js
+ // skills-ts-out/core/notion/api/blocks.js
  function getBlock(blockId) {
   return apiFetch(`/blocks/${blockId}`);
  }
@@ -908,7 +929,7 @@ var __skill_bundle = (() => {
   return apiFetch(`/blocks/${blockId}`, { method: "DELETE" });
  }
 
- // skills-ts-out/notion/api/comments.js
+ // skills-ts-out/core/notion/api/comments.js
  function createComment(body) {
   return apiFetch("/comments", { method: "POST", body });
  }
@@ -916,7 +937,7 @@ var __skill_bundle = (() => {
   return apiFetch(`/comments?block_id=${blockId}&page_size=${pageSize}`);
  }
 
- // skills-ts-out/notion/api/databases.js
+ // skills-ts-out/core/notion/api/databases.js
  function getDatabase(databaseId) {
   return apiFetch(`/databases/${databaseId}`);
  }
@@ -993,7 +1014,7 @@ var __skill_bundle = (() => {
   }
  }
 
- // skills-ts-out/notion/api/pages.js
+ // skills-ts-out/core/notion/api/pages.js
  function getPage(pageId) {
   return apiFetch(`/pages/${pageId}`);
  }
@@ -1013,12 +1034,12 @@ var __skill_bundle = (() => {
   return apiFetch(`/blocks/${pageId}/children?page_size=${pageSize}`);
  }
 
- // skills-ts-out/notion/api/search.js
+ // skills-ts-out/core/notion/api/search.js
  function search(body) {
   return apiFetch("/search", { method: "POST", body });
  }
 
- // skills-ts-out/notion/api/users.js
+ // skills-ts-out/core/notion/api/users.js
  function getUser(userId) {
   return apiFetch(`/users/${userId}`);
  }
@@ -1029,7 +1050,7 @@ var __skill_bundle = (() => {
   return apiFetch(endpoint);
  }
 
- // skills-ts-out/notion/api/index.js
+ // skills-ts-out/core/notion/api/index.js
  var notionApi = {
   // pages
   getPage,
@@ -1061,7 +1082,7 @@ var __skill_bundle = (() => {
   search
  };
 
- // skills-ts-out/notion/state.js
+ // skills-ts-out/core/notion/state.js
  function initNotionSkillState() {
   const s = {
    config: {
@@ -1105,7 +1126,7 @@ var __skill_bundle = (() => {
   return s;
  }
 
- // skills-ts-out/notion/db/helpers.js
+ // skills-ts-out/core/notion/db/helpers.js
  function credId() {
   return getNotionSkillState2().config.credentialId;
  }
@@ -1428,7 +1449,7 @@ var __skill_bundle = (() => {
   };
  }
 
- // skills-ts-out/notion/db/schema.js
+ // skills-ts-out/core/notion/db/schema.js
  function initializeNotionSchema() {
   console.log("[notion] Initializing database schema...");
   db.exec(`CREATE TABLE IF NOT EXISTS pages (
@@ -1644,7 +1665,7 @@ var __skill_bundle = (() => {
   }
  }
 
- // skills-ts-out/notion/sync.js
+ // skills-ts-out/core/notion/sync.js
  function performSync() {
   const s = getNotionSkillState2();
   if (s.syncStatus.syncInProgress) {
@@ -1670,8 +1691,8 @@ var __skill_bundle = (() => {
      await syncContent(startTime, CONTENT_SYNC_TIME_BUDGET_MS);
     }
     console.log("[notion] Sync phase 4: sync summaries to server");
-    console.log("[notion] Sync phase 5: submit new data to backend");
-    await submitNewData();
+    console.log("[notion] Sync phase 5: ingest documents into knowledge graph");
+    ingestNewDocuments();
     const durationMs = Date.now() - startTime;
     const nowMs = Date.now();
     s.syncStatus.nextSyncTime = nowMs + s.config.syncIntervalMinutes * 60 * 1e3;
@@ -1972,151 +1993,88 @@ var __skill_bundle = (() => {
   }
   console.log(`[notion] Content sync: ${synced} pages updated${failed > 0 ? `, ${failed} failed` : ""}`);
  }
- var MAX_BATCH_BYTES = 100 * 1024;
- var SUBMIT_QUERY_LIMIT = 500;
- function parsePageEntities(page) {
-  if (!page.page_entities)
-   return void 0;
-  let raw;
-  try {
-   raw = JSON.parse(page.page_entities);
-  } catch {
-   return void 0;
-  }
-  if (!Array.isArray(raw) || raw.length === 0)
-   return void 0;
-  const cid = getNotionSkillState2().config.credentialId;
-  const entities = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const e of raw) {
-   if (seen.has(e.id))
-    continue;
-   seen.add(e.id);
-   let name = e.name;
-   if (!name && e.type === "person") {
-    const user = db.get("SELECT name FROM users WHERE credential_id = ? AND id = ?", [
-     cid,
-     e.id
-    ]);
-    if (user)
-     name = user.name;
-   }
-   entities.push({ name: name || e.id, identifier: e.id, kind: e.type || "person" });
-  }
-  return entities.length > 0 ? entities : void 0;
- }
- function pageToChunk(page) {
-  const content = page.content_text || "";
-  return {
-   title: page.title || void 0,
-   content,
-   entities: parsePageEntities(page),
-   metadata: {
-    pageId: page.id,
-    url: page.url,
-    parentType: page.parent_type,
-    parentId: page.parent_id,
-    createdTime: page.created_time,
-    lastEditedTime: page.last_edited_time
-   }
-  };
- }
- function rowToChunk(row) {
-  const content = row.properties_text || "";
-  return {
-   title: row.title || void 0,
-   content,
-   rawContent: row.properties_json || void 0,
-   metadata: {
-    rowId: row.id,
-    databaseId: row.database_id,
-    url: row.url,
-    createdTime: row.created_time,
-    lastEditedTime: row.last_edited_time
-   }
-  };
- }
- function estimateChunkSize(chunk) {
-  return (chunk.title?.length || 0) + chunk.content.length + (chunk.rawContent?.length || 0) + 256;
- }
- async function submitNewData() {
-  const pages = getUnsubmittedPages(SUBMIT_QUERY_LIMIT);
-  const rows = getUnsubmittedRows(SUBMIT_QUERY_LIMIT);
+ var INGEST_QUERY_LIMIT = 500;
+ function ingestNewDocuments() {
+  const pages = getUnsubmittedPages(INGEST_QUERY_LIMIT);
+  const rows = getUnsubmittedRows(INGEST_QUERY_LIMIT);
   if (pages.length === 0 && rows.length === 0)
    return;
-  const prepared = [];
   const emptyPageIds = [];
   const emptyRowIds = [];
+  const submittedPageIds = [];
+  const submittedRowIds = [];
+  let ingested = 0;
   for (const page of pages) {
-   const chunk = pageToChunk(page);
-   if (chunk.content.length > 0) {
-    prepared.push({ id: page.id, type: "page", chunk });
-   } else {
+   const content = page.content_text || "";
+   if (content.length === 0) {
     emptyPageIds.push(page.id);
+    continue;
+   }
+   try {
+    memory.insert({
+     title: page.title || `Notion page ${page.id}`,
+     content,
+     sourceType: "doc",
+     documentId: `notion-page-${page.id}`,
+     metadata: {
+      source: "notion",
+      type: "page",
+      pageId: page.id,
+      url: page.url,
+      parentType: page.parent_type,
+      parentId: page.parent_id,
+      createdTime: page.created_time,
+      lastEditedTime: page.last_edited_time
+     },
+     createdAt: page.created_time ? new Date(page.created_time).getTime() / 1e3 : void 0,
+     updatedAt: page.last_edited_time ? new Date(page.last_edited_time).getTime() / 1e3 : void 0
+    });
+    submittedPageIds.push(page.id);
+    ingested++;
+   } catch (e) {
+    console.error(`[notion] Failed to ingest page ${page.id}: ${e}`);
    }
   }
   for (const row of rows) {
-   const chunk = rowToChunk(row);
-   if (chunk.content.length > 0) {
-    prepared.push({ id: row.id, type: "row", chunk });
-   } else {
+   const content = row.properties_text || "";
+   if (content.length === 0) {
     emptyRowIds.push(row.id);
+    continue;
+   }
+   try {
+    memory.insert({
+     title: row.title || `Notion row ${row.id}`,
+     content,
+     sourceType: "doc",
+     documentId: `notion-row-${row.id}`,
+     metadata: {
+      source: "notion",
+      type: "database_row",
+      rowId: row.id,
+      databaseId: row.database_id,
+      url: row.url,
+      createdTime: row.created_time,
+      lastEditedTime: row.last_edited_time
+     },
+     createdAt: row.created_time ? new Date(row.created_time).getTime() / 1e3 : void 0,
+     updatedAt: row.last_edited_time ? new Date(row.last_edited_time).getTime() / 1e3 : void 0
+    });
+    submittedRowIds.push(row.id);
+    ingested++;
+   } catch (e) {
+    console.error(`[notion] Failed to ingest row ${row.id}: ${e}`);
    }
   }
   if (emptyPageIds.length > 0)
    markPagesSubmitted(emptyPageIds);
   if (emptyRowIds.length > 0)
    markRowsSubmitted(emptyRowIds);
-  if (prepared.length === 0)
-   return;
-  let batch = [];
-  let batchPageIds = [];
-  let batchRowIds = [];
-  let batchBytes = 0;
-  let totalSubmitted = 0;
-  const flushBatch = async () => {
-   if (batch.length === 0)
-    return true;
-   const pageIds = batchPageIds.slice();
-   const rowIds = batchRowIds.slice();
-   const batchLength = batch.length;
-   try {
-    if (pageIds.length > 0)
-     markPagesSubmitted(pageIds);
-    if (rowIds.length > 0)
-     markRowsSubmitted(rowIds);
-    totalSubmitted += batchLength;
-    return true;
-   } catch (error) {
-    console.error(`[notion] Failed to submit batch to backend: ${error}`);
-    return false;
-   } finally {
-    batch = [];
-    batchPageIds = [];
-    batchRowIds = [];
-    batchBytes = 0;
-   }
-  };
-  for (const { id, type, chunk } of prepared) {
-   const size = estimateChunkSize(chunk);
-   if (batch.length > 0 && batchBytes + size > MAX_BATCH_BYTES) {
-    if (!await flushBatch())
-     return;
-   }
-   batch.push(chunk);
-   if (type === "page")
-    batchPageIds.push(id);
-   else
-    batchRowIds.push(id);
-   batchBytes += size;
-   if (batch.length === 1 && batchBytes > MAX_BATCH_BYTES) {
-    if (!await flushBatch())
-     return;
-   }
-  }
-  await flushBatch();
-  if (totalSubmitted > 0) {
-   console.log(`[notion] Submitted ${totalSubmitted} item(s) to backend`);
+  if (submittedPageIds.length > 0)
+   markPagesSubmitted(submittedPageIds);
+  if (submittedRowIds.length > 0)
+   markRowsSubmitted(submittedRowIds);
+  if (ingested > 0) {
+   console.log(`[notion] Ingested ${ingested} document(s) into knowledge graph`);
   }
  }
  function publishSyncState() {
@@ -2146,7 +2104,7 @@ var __skill_bundle = (() => {
   });
  }
 
- // skills-ts-out/notion/tools/append-blocks.js
+ // skills-ts-out/core/notion/tools/append-blocks.js
  var appendBlocksTool = {
   name: "append-blocks",
   description: "Append child blocks to a page or block. Supports various block types.",
@@ -2192,7 +2150,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/append-text.js
+ // skills-ts-out/core/notion/tools/append-text.js
  var appendTextTool = {
   name: "append-text",
   description: "Append text content to a page or block. Use the page id (or block_id) from list-all-pages or get-page. Creates paragraph blocks with the given text.",
@@ -2248,7 +2206,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/create-comment.js
+ // skills-ts-out/core/notion/tools/create-comment.js
  var createCommentTool = {
   name: "create-comment",
   description: "Create a comment on a page or block, or reply to a discussion. Provide either page_id (new comment on page) or discussion_id (reply). Requires Notion integration to have insert comment capability.",
@@ -2303,7 +2261,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/create-database.js
+ // skills-ts-out/core/notion/tools/create-database.js
  var createDatabaseTool = {
   name: "create-database",
   description: "Create a new database in Notion. Specify parent page_id and title. Optionally provide properties schema as JSON.",
@@ -2355,7 +2313,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/create-page.js
+ // skills-ts-out/core/notion/tools/create-page.js
  var createPageTool = {
   name: "create-page",
   description: "Create a new page in Notion. Parent can be another page or a database. For database parents, properties must match the database schema.",
@@ -2431,7 +2389,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/delete-block.js
+ // skills-ts-out/core/notion/tools/delete-block.js
  var deleteBlockTool = {
   name: "delete-block",
   description: "Delete a block. Permanently removes the block from Notion.",
@@ -2455,7 +2413,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/delete-page.js
+ // skills-ts-out/core/notion/tools/delete-page.js
  var deletePageTool = {
   name: "delete-page",
   description: "Delete (archive) a page. Archived pages can be restored from Notion's trash.",
@@ -2482,7 +2440,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/get-block.js
+ // skills-ts-out/core/notion/tools/get-block.js
  var getBlockTool = {
   name: "get-block",
   description: "Get a block by its ID. Returns the block's type and content.",
@@ -2508,7 +2466,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/get-block-children.js
+ // skills-ts-out/core/notion/tools/get-block-children.js
  var getBlockChildrenTool = {
   name: "get-block-children",
   description: "Get the children blocks of a block or page.",
@@ -2540,7 +2498,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/get-database.js
+ // skills-ts-out/core/notion/tools/get-database.js
  var getDatabaseTool = {
   name: "get-database",
   description: "Get a database's schema and metadata. Shows all properties and their types.",
@@ -2573,7 +2531,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/get-page.js
+ // skills-ts-out/core/notion/tools/get-page.js
  var getPageTool = {
   name: "get-page",
   description: "Get a page's metadata and properties by its ID. Use notion-get-page-content to get the actual content/blocks.",
@@ -2601,7 +2559,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/get-page-content.js
+ // skills-ts-out/core/notion/tools/get-page-content.js
  var getPageContentTool = {
   name: "get-page-content",
   description: "Get the content blocks of a page. Returns the text and structure of the page. Use recursive=true to also get nested blocks.",
@@ -2652,7 +2610,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/get-user.js
+ // skills-ts-out/core/notion/tools/get-user.js
  var getUserTool = {
   name: "get-user",
   description: "Get a user by their ID.",
@@ -2677,7 +2635,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/list-all-databases.js
+ // skills-ts-out/core/notion/tools/list-all-databases.js
  var listAllDatabasesTool = {
   name: "list-all-databases",
   description: "List all databases in the workspace that the integration has access to.",
@@ -2699,7 +2657,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/list-all-pages.js
+ // skills-ts-out/core/notion/tools/list-all-pages.js
  function formatLocalPageSummary(p) {
   return {
    id: p.id,
@@ -2740,7 +2698,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/list-comments.js
+ // skills-ts-out/core/notion/tools/list-comments.js
  var listCommentsTool = {
   name: "list-comments",
   description: "List comments on a block or page.",
@@ -2777,7 +2735,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/list-users.js
+ // skills-ts-out/core/notion/tools/list-users.js
  var listUsersTool = {
   name: "list-users",
   description: "List all users in the workspace that the integration can see.",
@@ -2799,7 +2757,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/query-database.js
+ // skills-ts-out/core/notion/tools/query-database.js
  var queryDatabaseTool = {
   name: "query-database",
   description: "Query a database with optional filters and sorts. Returns database rows/pages. Automatically handles API version compatibility.",
@@ -2881,7 +2839,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/search.js
+ // skills-ts-out/core/notion/tools/search.js
  function toSearchResultItem(item) {
   const base = {
    object: item.object,
@@ -2961,7 +2919,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/summarize-pages.js
+ // skills-ts-out/core/notion/tools/summarize-pages.js
  var summarizePagesTool = {
   name: "summarize-pages",
   description: "AI summarization of Notion pages is now handled by the backend server. Synced page content is submitted to the server which runs summarization.",
@@ -2974,7 +2932,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/sync-now.js
+ // skills-ts-out/core/notion/tools/sync-now.js
  var syncNowTool = {
   name: "sync-now",
   description: "Trigger an immediate Notion sync to refresh local data. Returns sync results including counts of synced pages and databases.",
@@ -3014,7 +2972,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/sync-status.js
+ // skills-ts-out/core/notion/tools/sync-status.js
  var syncStatusTool = {
   name: "sync-status",
   description: "Get the current Notion sync status including last sync time, total synced pages/databases, sync progress, and any errors.",
@@ -3051,7 +3009,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/update-block.js
+ // skills-ts-out/core/notion/tools/update-block.js
  var updateBlockTool = {
   name: "update-block",
   description: "Update a block's content. The structure depends on the block type.",
@@ -3105,7 +3063,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/update-database.js
+ // skills-ts-out/core/notion/tools/update-database.js
  var updateDatabaseTool = {
   name: "update-database",
   description: "Update a database's title or properties schema.",
@@ -3151,7 +3109,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/update-page.js
+ // skills-ts-out/core/notion/tools/update-page.js
  var updatePageTool = {
   name: "update-page",
   description: "Update a page's properties. Can update title and other properties. Use notion-append-text to add content blocks.",
@@ -3208,7 +3166,7 @@ var __skill_bundle = (() => {
   }
  };
 
- // skills-ts-out/notion/tools/index.js
+ // skills-ts-out/core/notion/tools/index.js
  var tools = [
   appendBlocksTool,
   appendTextTool,
@@ -3238,7 +3196,7 @@ var __skill_bundle = (() => {
  ];
  var tools_default = tools;
 
- // skills-ts-out/notion/index.js
+ // skills-ts-out/core/notion/index.js
  async function init() {
   console.log("[notion] Initializing");
   const s = getNotionSkillState2();
@@ -3261,19 +3219,21 @@ var __skill_bundle = (() => {
   s.syncStatus.totalDatabaseRows = counts.databaseRows;
   s.syncStatus.pagesWithContent = counts.pagesWithContent;
   s.syncStatus.pagesWithSummary = counts.pagesWithSummary;
-  const cred = oauth.getCredential();
-  if (cred) {
-   s.config.credentialId = cred.credentialId;
-   console.log(`[notion] Connected to workspace: ${s.config.workspaceName || "(unnamed)"}`);
+  const oauthCred = oauth.getCredential();
+  if (oauthCred) {
+   s.config.credentialId = oauthCred.credentialId;
+   console.log(`[notion] Connected via OAuth to workspace: ${s.config.workspaceName || "(unnamed)"}`);
+  } else if (isNotionConnected()) {
+   console.log(`[notion] Connected via auth credential to workspace: ${s.config.workspaceName || "(unnamed)"}`);
   } else {
-   console.log("[notion] No OAuth credential \u2014 waiting for setup");
+   console.log("[notion] No credential \u2014 waiting for setup");
   }
   publishState();
  }
  async function start() {
   const s = getNotionSkillState2();
-  if (!oauth.getCredential()) {
-   console.log("[notion] No credential \u2014 skill inactive until OAuth completes");
+  if (!isNotionConnected()) {
+   console.log("[notion] No credential \u2014 skill inactive until auth completes");
    return;
   }
   const cronExpr = `0 */${s.config.syncIntervalMinutes} * * * *`;
@@ -3336,6 +3296,93 @@ var __skill_bundle = (() => {
   cron.unregister("notion-sync");
   publishState();
  }
+ async function onAuthComplete(args) {
+  console.log(`[notion] onAuthComplete \u2014 mode: ${args.mode}`);
+  const s = getNotionSkillState2();
+  if (args.mode === "managed") {
+   return { status: "complete" };
+  }
+  const token = args.credentials.api_token ?? args.credentials.content ?? args.credentials.access_token;
+  if (!token) {
+   return { status: "error", errors: [{ field: "api_token", message: "API token is required." }] };
+  }
+  try {
+   const response = await net.fetch("https://api.notion.com/v1/users?page_size=1", {
+    method: "GET",
+    headers: {
+     Authorization: `Bearer ${token}`,
+     "Content-Type": "application/json",
+     "Notion-Version": "2022-06-28"
+    },
+    timeout: 15
+   });
+   if (response.status === 401 || response.status === 403) {
+    return {
+     status: "error",
+     errors: [
+      {
+       field: "api_token",
+       message: "Invalid token. Check that your integration token is correct."
+      }
+     ]
+    };
+   }
+   if (response.status >= 400) {
+    return {
+     status: "error",
+     errors: [
+      {
+       field: "api_token",
+       message: `Notion API returned error ${response.status}. Please check your token.`
+      }
+     ]
+    };
+   }
+   try {
+    const data = JSON.parse(response.body);
+    const botUser = data.results?.find((u) => u.type === "bot");
+    if (botUser?.name) {
+     s.config.workspaceName = botUser.name;
+    }
+   } catch {
+   }
+  } catch (err) {
+   return {
+    status: "error",
+    errors: [{ field: "api_token", message: `Could not reach Notion API: ${String(err)}` }]
+   };
+  }
+  state.set("config", s.config);
+  resetApiVersionCache();
+  const cronExpr = `0 */${s.config.syncIntervalMinutes} * * * *`;
+  cron.register("notion-sync", cronExpr);
+  publishState();
+  return { status: "complete", message: "Connected to Notion!" };
+ }
+ async function onAuthRevoked(args) {
+  console.log(`[notion] Auth revoked \u2014 mode: ${args.mode || "unknown"}`);
+  const s = getNotionSkillState2();
+  s.config.credentialId = "";
+  s.config.workspaceName = "";
+  state.setPartial({ profile: null });
+  state.delete("config");
+  cron.unregister("notion-sync");
+  resetApiVersionCache();
+  publishState();
+ }
+ async function onSetupStart() {
+  return {
+   step: {
+    id: "auth_done",
+    title: "Setup Complete",
+    description: "Authentication is configured. Click Continue to finish.",
+    fields: []
+   }
+  };
+ }
+ async function onSetupSubmit(_args) {
+  return { status: "complete" };
+ }
  async function onSync() {
   console.log("[notion] Syncing");
   try {
@@ -3386,11 +3433,10 @@ var __skill_bundle = (() => {
  }
  async function onSetOption(args) {
   const s = getNotionSkillState2();
-  const credential = oauth.getCredential();
   switch (args.name) {
    case "syncInterval":
     s.config.syncIntervalMinutes = parseInt(args.value, 10);
-    if (credential) {
+    if (isNotionConnected()) {
      cron.unregister("notion-sync");
      const cronExpr = `0 */${s.config.syncIntervalMinutes} * * * *`;
      cron.register("notion-sync", cronExpr);
@@ -3408,7 +3454,7 @@ var __skill_bundle = (() => {
  }
  async function publishState() {
   const s = getNotionSkillState2();
-  const isConnected = !!oauth.getCredential();
+  const isConnected = isNotionConnected();
   let pages = [];
   if (isConnected) {
    try {
@@ -3445,9 +3491,8 @@ var __skill_bundle = (() => {
   });
  }
  async function onPing() {
-  const cred = oauth.getCredential();
-  if (!cred) {
-   return { ok: false, errorType: "auth", errorMessage: "No OAuth credential" };
+  if (!isNotionConnected()) {
+   return { ok: false, errorType: "auth", errorMessage: "No credential" };
   }
   try {
    await notionFetch("/users?page_size=1");
@@ -3481,6 +3526,10 @@ var __skill_bundle = (() => {
   onSessionEnd,
   onOAuthComplete,
   onOAuthRevoked,
+  onAuthComplete,
+  onAuthRevoked,
+  onSetupStart,
+  onSetupSubmit,
   onDisconnect,
   onSync,
   onListOptions,
