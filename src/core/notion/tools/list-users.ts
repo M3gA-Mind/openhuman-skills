@@ -29,7 +29,7 @@ export const listUsersTool: ToolDefinition = {
             id: u.id,
             name: u.name,
             email: u.email,
-            type: u.type,
+            type: u.user_type,
             avatar_url: u.avatar_url,
           }));
           return JSON.stringify({ count: users.length, users, source: 'cache' });
