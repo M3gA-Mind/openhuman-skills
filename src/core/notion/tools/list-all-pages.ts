@@ -1,7 +1,7 @@
 // Tool: notion-list-pages
 import { notionApi } from '../api/index';
-import { formatApiError, formatPageSummary } from '../helpers';
 import { getLocalPages } from '../db/helpers';
+import { formatApiError, formatPageSummary } from '../helpers';
 import { isCacheFresh } from './cache';
 
 export const listPagesTool: ToolDefinition = {
@@ -17,7 +17,8 @@ export const listPagesTool: ToolDefinition = {
       },
       tryCache: {
         type: 'boolean',
-        description: 'If true, return locally cached pages when cache is fresh (synced within 3 hours)',
+        description:
+          'If true, return locally cached pages when cache is fresh (synced within 3 hours)',
       },
     },
   },
@@ -54,7 +55,12 @@ export const listPagesTool: ToolDefinition = {
       });
 
       const pages = (result.results as Record<string, unknown>[]).map(formatPageSummary);
-      return JSON.stringify({ count: pages.length, has_more: result.has_more, pages, source: 'api' });
+      return JSON.stringify({
+        count: pages.length,
+        has_more: result.has_more,
+        pages,
+        source: 'api',
+      });
     } catch (e) {
       return JSON.stringify({ error: formatApiError(e) });
     }

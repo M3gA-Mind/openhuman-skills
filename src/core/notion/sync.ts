@@ -3,7 +3,6 @@
 // into local SQLite for fast local querying.
 import { syncIntegrationMetadata } from '../../shared/integration-metadata';
 import { notionApi } from './api/index';
-import { isNotionConnected } from './helpers';
 import {
   getDatabaseById, // getDatabaseRowById,
   getEntityCounts, // getLocalDatabases,
@@ -22,6 +21,7 @@ import {
   upsertPage,
   upsertUser,
 } from './db/helpers';
+import { isNotionConnected } from './helpers';
 import { fetchBlockTreeText } from './helpers';
 import { getNotionSkillState } from './state';
 

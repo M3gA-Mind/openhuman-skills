@@ -1,7 +1,7 @@
 // Tool: notion-list-users
 import { notionApi } from '../api/index';
-import { formatApiError, formatUserSummary } from '../helpers';
 import { getLocalUsers } from '../db/helpers';
+import { formatApiError, formatUserSummary } from '../helpers';
 import { isCacheFresh } from './cache';
 
 export const listUsersTool: ToolDefinition = {
@@ -14,7 +14,8 @@ export const listUsersTool: ToolDefinition = {
       page_size: { type: 'number', description: 'Number of results (default 100, max 100)' },
       tryCache: {
         type: 'boolean',
-        description: 'If true, return locally cached users when cache is fresh (synced within 3 hours)',
+        description:
+          'If true, return locally cached users when cache is fresh (synced within 3 hours)',
       },
     },
   },

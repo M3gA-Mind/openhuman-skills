@@ -187,7 +187,9 @@ async function main() {
   console.log(`\n${C.bold}  Notion Skill — Live Integration Script${C.reset}`);
   info('Backend', BACKEND_URL);
   info('JWT', `<${JWT_TOKEN.length} chars>`);
-  console.log(`${C.dim}    Tip: run the skills runtime with RUST_LOG=info to see skill logs${C.reset}`);
+  console.log(
+    `${C.dim}    Tip: run the skills runtime with RUST_LOG=info to see skill logs${C.reset}`
+  );
 
   // ── Resolve credentials (env or interactive) ─────────────────────────────
 
@@ -501,7 +503,10 @@ async function main() {
   // Test tryCache after sync
   step('list-pages (tryCache=true)...');
   {
-    const { data, error, elapsedMs } = await callToolSafe('list-pages', { page_size: 10, tryCache: true });
+    const { data, error, elapsedMs } = await callToolSafe('list-pages', {
+      page_size: 10,
+      tryCache: true,
+    });
     if (error) fail(error);
     else {
       const pages = data?.pages || data?.results || [];

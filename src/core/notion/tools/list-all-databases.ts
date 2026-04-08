@@ -1,7 +1,7 @@
 // Tool: notion-list-databases
 import { notionApi } from '../api/index';
-import { formatApiError, formatDatabaseSummary } from '../helpers';
 import { getLocalDatabases } from '../db/helpers';
+import { formatApiError, formatDatabaseSummary } from '../helpers';
 import { isCacheFresh } from './cache';
 
 export const listDatabasesTool: ToolDefinition = {
@@ -14,7 +14,8 @@ export const listDatabasesTool: ToolDefinition = {
       page_size: { type: 'number', description: 'Number of results (default 20, max 100)' },
       tryCache: {
         type: 'boolean',
-        description: 'If true, return locally cached databases when cache is fresh (synced within 3 hours)',
+        description:
+          'If true, return locally cached databases when cache is fresh (synced within 3 hours)',
       },
     },
   },
@@ -47,7 +48,12 @@ export const listDatabasesTool: ToolDefinition = {
       const databases = result.results.map((item: Record<string, unknown>) =>
         formatDatabaseSummary(item)
       );
-      return JSON.stringify({ count: databases.length, has_more: result.has_more, databases, source: 'api' });
+      return JSON.stringify({
+        count: databases.length,
+        has_more: result.has_more,
+        databases,
+        source: 'api',
+      });
     } catch (e) {
       return JSON.stringify({ error: formatApiError(e) });
     }

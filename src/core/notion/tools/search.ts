@@ -70,7 +70,8 @@ export const searchTool: ToolDefinition = {
       if (query) body.query = query;
       if (filter) {
         // Map 'database' to 'data_source' for the new Notion API (2025-09-03)
-        const filterValue = filter === 'database' || filter === 'data_source' ? 'data_source' : 'page';
+        const filterValue =
+          filter === 'database' || filter === 'data_source' ? 'data_source' : 'page';
         body.filter = { property: 'object', value: filterValue };
       }
       body.sort = {

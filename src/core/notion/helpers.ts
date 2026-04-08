@@ -108,10 +108,7 @@ export async function notionFetch<T>(
       console.log(`[notion][fetch] ${method} /v1${path} (proxy, attempt ${attempt})`);
       response = await oauth.fetch(`/v1${path}`, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Notion-Version': apiVersion,
-        },
+        headers: { 'Content-Type': 'application/json', 'Notion-Version': apiVersion },
         body: options.body ? JSON.stringify(options.body) : undefined,
         timeout: 30,
       });
@@ -119,7 +116,9 @@ export async function notionFetch<T>(
 
     const elapsed = Date.now() - t0;
     const bodyLen = response.body ? response.body.length : 0;
-    console.log(`[notion][fetch] ${method} ${path} status=${response.status} (${elapsed}ms, ${bodyLen}b)`);
+    console.log(
+      `[notion][fetch] ${method} ${path} status=${response.status} (${elapsed}ms, ${bodyLen}b)`
+    );
 
     // -- 429 Rate Limit: back off and retry ----------------------------------
     if (response.status === 429 && attempt < MAX_RETRIES) {
