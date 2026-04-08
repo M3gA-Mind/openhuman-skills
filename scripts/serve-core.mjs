@@ -17,6 +17,11 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '..');
 
+/**
+ * Parse `openhuman-skills/.env` into a copy of `process.env`, filling keys
+ * not already set in the environment (does not override existing vars).
+ * @returns {NodeJS.ProcessEnv}
+ */
 function loadEnvFromSkillsDotenv() {
   const envPath = resolve(rootDir, '.env');
   const envVars = { ...process.env };
@@ -39,6 +44,11 @@ function loadEnvFromSkillsDotenv() {
   return envVars;
 }
 
+/**
+ * Locate the openhuman repo: `./openhuman` submodule, sibling `../openhuman`, or `OPENHUMAN_ROOT`.
+ * Exits the process if no checkout with `Cargo.toml` is found.
+ * @returns {string} Absolute path to the openhuman repository root
+ */
 function findOpenhumanRoot() {
   const fromSubmodule = resolve(rootDir, 'openhuman', 'Cargo.toml');
   if (existsSync(fromSubmodule)) {

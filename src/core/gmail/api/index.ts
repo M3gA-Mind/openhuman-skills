@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Gmail API helper (uses net.fetch directly with Bearer token)
+// Gmail API helper (all requests via OAuth proxy — `oauth.fetch`)
 import { getGmailSkillState } from '../state';
 import type { ApiError } from '../types';
 
@@ -25,12 +25,20 @@ export function isGmailConnected(): boolean {
   return !!oauthCred;
 }
 
+/** Parsed Gmail API result: success payload or structured error for callers. */
 export interface GmailApiResponse<T> {
   success: boolean;
   data?: T;
   error?: ApiError;
 }
 
+/**
+ * Perform a Gmail REST request through the managed OAuth proxy (`oauth.fetch`).
+ * Handles 429 backoff, rate-limit header updates, and optional raw batch bodies.
+ *
+ * @param endpoint - Path under the Gmail API root (leading `/` optional)
+ * @param options - HTTP method, body, headers, timeout, or `rawBatch` for multipart batch responses
+ */
 export function gmailFetch<T = unknown>(
   endpoint: string,
   options: {

@@ -48,13 +48,19 @@ const C = {
   blue: '\x1b[34m',
 };
 
+/** Print a cyan section header with horizontal rules. */
 const header = (t: string) =>
   console.log(`\n${C.cyan}${'─'.repeat(60)}\n  ${t}\n${'─'.repeat(60)}${C.reset}`);
+/** Print a blue in-progress step label (no newline). */
 const step = (l: string) => process.stdout.write(`${C.blue}  ▸ ${l}${C.reset} `);
+/** Print a green checkmark with optional dim detail. */
 const ok = (d?: string) =>
   console.log(`${C.green}✓${C.reset}${d ? ` ${C.dim}${d}${C.reset}` : ''}`);
+/** Print a red failure line. */
 const fail = (d: string) => console.log(`${C.red}✗ ${d}${C.reset}`);
+/** Print a dim key/value diagnostic line. */
 const info = (l: string, v: unknown) => console.log(`${C.dim}    ${l}: ${C.reset}${v}`);
+/** Current time as `HH:MM:SS` for poll logs. */
 const ts = () => new Date().toISOString().slice(11, 19);
 
 // ---------------------------------------------------------------------------
@@ -63,6 +69,13 @@ const ts = () => new Date().toISOString().slice(11, 19);
 
 const SKILL_ID = 'gmail';
 
+/**
+ * Invoke a Gmail skill tool via the test harness and parse JSON/text from the result.
+ *
+ * @param name - Tool name
+ * @param args - Tool arguments
+ * @param timeoutMs - RPC timeout
+ */
 async function callTool(
   name: string,
   args: Record<string, unknown> = {},
@@ -87,6 +100,7 @@ async function callTool(
   }
 }
 
+/** Read the skill’s published state snapshot from the harness (or null on error). */
 async function getState(): Promise<Record<string, unknown> | null> {
   try {
     const snap = await getSkillStatus(SKILL_ID);
@@ -96,6 +110,7 @@ async function getState(): Promise<Record<string, unknown> | null> {
   }
 }
 
+/** Run an async function and return `[result, elapsedMs]`. */
 function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
   const t0 = Date.now();
   return fn().then(r => [r, Date.now() - t0]);
@@ -107,6 +122,9 @@ function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
+/**
+ * Prompt for a line of input; empty input falls back to `defaultValue` when provided.
+ */
 function prompt(question: string, defaultValue?: string): Promise<string> {
   const suffix = defaultValue ? ` ${C.dim}[${defaultValue}]${C.reset}` : '';
   return new Promise(resolve => {
@@ -116,6 +134,7 @@ function prompt(question: string, defaultValue?: string): Promise<string> {
   });
 }
 
+/** Prompt for a hidden secret (raw TTY mode); Ctrl+C exits the process. */
 function promptSecret(question: string): Promise<string> {
   return new Promise(resolve => {
     process.stdout.write(`${C.yellow}  ? ${question}: ${C.reset}`);
@@ -142,6 +161,7 @@ function promptSecret(question: string): Promise<string> {
   });
 }
 
+/** Open a URL in the default browser (best-effort; logs if the command fails). */
 function openUrl(url: string) {
   const cmd =
     process.platform === 'darwin'
@@ -278,6 +298,7 @@ async function resolveCredentials(): Promise<ResolvedCreds> {
 // Main
 // ---------------------------------------------------------------------------
 
+/** CLI entry: resolve creds, start skill, OAuth, trigger sync, poll, verify tools, stop. */
 async function main() {
   console.log(`\n${C.bold}  Gmail Sync — Live Test${C.reset}`);
 

@@ -64,6 +64,15 @@ export function isNotionConnected(): boolean {
   return getNotionAuth() !== null;
 }
 
+/**
+ * Call the Notion API: direct `api.notion.com` with a bearer token (self-hosted) or
+ * `oauth.fetch` when using managed OAuth. Retries 429 and transient Cloudflare codes.
+ *
+ * @param endpoint - Path under `/v1` (leading `/` optional)
+ * @param options - Optional HTTP method and JSON body
+ * @returns Parsed JSON response body
+ * @throws Error on HTTP error responses or when retries are exhausted
+ */
 export function notionFetch<T>(
   endpoint: string,
   options: { method?: string; body?: unknown } = {}
@@ -137,7 +146,7 @@ export function notionFetch<T>(
     if (response.status >= 400) {
       const errorBody = response.body || '';
       // Always include the raw body for debugging
-      let message = `Notion API error: ${response.status} — ${errorBody.slice(0, 300)}`;
+      const message = `Notion API error: ${response.status} — ${errorBody.slice(0, 300)}`;
       console.error('[notion][helpers] notionFetch error body:', errorBody);
       throw new Error(message);
     }
@@ -152,6 +161,9 @@ export function notionFetch<T>(
   );
 }
 
+/**
+ * Turn a thrown error or status string into a short, user-facing Notion message.
+ */
 export function formatApiError(error: unknown): string {
   const message = String(error);
 
@@ -193,6 +205,7 @@ export function formatApiError(error: unknown): string {
 // Formatting helpers
 // ---------------------------------------------------------------------------
 
+/** Concatenate plain_text segments from a Notion rich_text array. */
 export function formatRichText(richText: unknown[]): string {
   if (!Array.isArray(richText)) return '';
   return richText
@@ -203,6 +216,7 @@ export function formatRichText(richText: unknown[]): string {
     .join('');
 }
 
+/** Resolve a page’s display title from its `properties` title field, else its id. */
 export function formatPageTitle(page: Record<string, unknown>): string {
   const props = page.properties as Record<string, unknown>;
   if (!props) return page.id as string;
@@ -218,6 +232,7 @@ export function formatPageTitle(page: Record<string, unknown>): string {
   return page.id as string;
 }
 
+/** Compact page metadata for tools and UI (no full body). */
 export function formatPageSummary(page: Record<string, unknown>): Record<string, unknown> {
   return {
     id: page.id,
@@ -230,6 +245,7 @@ export function formatPageSummary(page: Record<string, unknown>): Record<string,
   };
 }
 
+/** Compact database metadata including property count. */
 export function formatDatabaseSummary(db: Record<string, unknown>): Record<string, unknown> {
   const title = Array.isArray(db.title) ? formatRichText(db.title) : '';
   return {
@@ -242,6 +258,7 @@ export function formatDatabaseSummary(db: Record<string, unknown>): Record<strin
   };
 }
 
+/** Extract human-readable text from a block’s primary rich_text (or a placeholder). */
 export function formatBlockContent(block: Record<string, unknown>): string {
   const type = block.type as string;
   const content = block[type] as Record<string, unknown> | undefined;
@@ -260,6 +277,7 @@ export function formatBlockContent(block: Record<string, unknown>): string {
   return `[${type}]`;
 }
 
+/** Id, type, children flag, and short content preview for a block. */
 export function formatBlockSummary(block: Record<string, unknown>): Record<string, unknown> {
   return {
     id: block.id,
@@ -269,6 +287,7 @@ export function formatBlockSummary(block: Record<string, unknown>): Record<strin
   };
 }
 
+/** Normalize Notion user objects (including bot owner drill-down) for display. */
 export function formatUserSummary(user: Record<string, unknown>): Record<string, unknown> {
   // Default to top-level user fields
   let id = user.id as string;
