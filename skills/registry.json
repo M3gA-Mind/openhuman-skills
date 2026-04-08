@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-04-08T19:53:57.887Z",
+  "generated_at": "2026-04-08T20:26:04.831Z",
   "skills": {
     "core": [
       {
@@ -125,7 +125,7 @@
         "ignore_in_production": false,
         "download_url": "https://raw.githubusercontent.com/M3gA-Mind/openhuman-skills/refs/heads/build/skills/notion/index.js",
         "manifest_url": "https://raw.githubusercontent.com/M3gA-Mind/openhuman-skills/refs/heads/build/skills/notion/manifest.json",
-        "checksum_sha256": "1ebc2ffe5124ac72d23f599a5b081c31814940da63eb7b75f1fe5f6d080adcd6"
+        "checksum_sha256": "41be7e6d39441c47b6ea7d4b4b6d35e2fbe86279ddd207c28cfff4816e3f3249"
       }
     ],
     "third_party": []

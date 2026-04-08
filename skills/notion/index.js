@@ -649,7 +649,7 @@ var __skill_bundle = (() => {
    }
    if (response.status >= 400) {
     const errorBody = response.body || "";
-    let message = `Notion API error: ${response.status} \u2014 ${errorBody.slice(0, 300)}`;
+    const message = `Notion API error: ${response.status} \u2014 ${errorBody.slice(0, 300)}`;
     console.error("[notion][helpers] notionFetch error body:", errorBody);
     throw new Error(message);
    }
