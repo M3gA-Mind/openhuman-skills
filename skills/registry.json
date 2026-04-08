@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-04-07T13:19:02.631Z",
+  "generated_at": "2026-04-08T11:55:56.429Z",
   "skills": {
     "core": [
       {
@@ -75,7 +75,7 @@
         "ignore_in_production": false,
         "download_url": "https://raw.githubusercontent.com/M3gA-Mind/openhuman-skills/refs/heads/build/skills/gmail/index.js",
         "manifest_url": "https://raw.githubusercontent.com/M3gA-Mind/openhuman-skills/refs/heads/build/skills/gmail/manifest.json",
-        "checksum_sha256": "d158f32f72164e24334a89cec230da5ac6ee19ccf5c7e06d35cc74d2cf16e33a"
+        "checksum_sha256": "b3907b19545d600c57e1f8729cdd443bda08524588c46a0c5438212baf7f3f91"
       },
       {
         "id": "notion",
@@ -125,7 +125,7 @@
         "ignore_in_production": false,
         "download_url": "https://raw.githubusercontent.com/M3gA-Mind/openhuman-skills/refs/heads/build/skills/notion/index.js",
         "manifest_url": "https://raw.githubusercontent.com/M3gA-Mind/openhuman-skills/refs/heads/build/skills/notion/manifest.json",
-        "checksum_sha256": "d1acff40e5e3962ee5875eb2a8370bfb0ac25cd234e11d7f9b0a75acf864157c"
+        "checksum_sha256": "fe075649f5e54487e32ebf44534cbb22933a6345f2cad8e3c301ec68436e7e36"
       }
     ],
     "third_party": []

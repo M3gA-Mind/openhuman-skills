@@ -123,12 +123,12 @@ var __skill_bundle = (() => {
    if (typeof data2 === "bigint" || data2 && typeof data2 === "object" && typeof data2.toJSNumber === "function") {
     let bigVal = typeof data2 === "bigint" ? data2 : data2.value;
     if (typeof bigVal !== "bigint") bigVal = BigInt(data2.valueOf());
-    const isNegative = bigVal < 0n;
+    const isNegative = bigVal < /* @__PURE__ */ BigInt("0");
     if (isNegative) bigVal = -bigVal;
     const bytes = [];
-    while (bigVal > 0n) {
-     bytes.push(Number(bigVal & 0xffn));
-     bigVal >>= 8n;
+    while (bigVal > /* @__PURE__ */ BigInt("0")) {
+     bytes.push(Number(bigVal & /* @__PURE__ */ BigInt("0xff")));
+     bigVal >>= /* @__PURE__ */ BigInt("8");
     }
     if (bytes.length === 0) bytes.push(0);
     if (isNegative) {
@@ -369,22 +369,22 @@ var __skill_bundle = (() => {
   readBigInt64LE(offset = 0) {
    const lo = this.readUInt32LE(offset);
    const hi = this.readInt32LE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readBigInt64BE(offset = 0) {
    const hi = this.readInt32BE(offset);
    const lo = this.readUInt32BE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readBigUInt64LE(offset = 0) {
    const lo = this.readUInt32LE(offset);
    const hi = this.readUInt32LE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readBigUInt64BE(offset = 0) {
    const hi = this.readUInt32BE(offset);
    const lo = this.readUInt32BE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readFloatLE(offset = 0) {
    const view = new DataView(this.buffer, this.byteOffset + offset, 4);
@@ -461,29 +461,29 @@ var __skill_bundle = (() => {
    return offset + 4;
   }
   writeBigInt64LE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeUInt32LE(lo, offset);
    this.writeInt32LE(hi, offset + 4);
    return offset + 8;
   }
   writeBigInt64BE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeInt32BE(hi, offset);
    this.writeUInt32BE(lo, offset + 4);
    return offset + 8;
   }
   writeBigUInt64LE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeUInt32LE(lo, offset);
    this.writeUInt32LE(hi, offset + 4);
    return offset + 8;
   }
   writeBigUInt64BE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeUInt32BE(hi, offset);
    this.writeUInt32BE(lo, offset + 4);
    return offset + 8;
@@ -638,7 +638,7 @@ var __skill_bundle = (() => {
   const { stepId, values } = args;
   const s = globalThis.getSkillState();
   if (stepId === "server-config") {
-   const url = (values.serverUrl ?? "").trim();
+   const url = (values.serverUrl || "").trim();
    if (!url) {
     return {
      status: "error",
@@ -705,8 +705,8 @@ var __skill_bundle = (() => {
    };
   }
   if (stepId === "notification-config") {
-   s.config.notifyOnDown = values.notifyOnDown ?? true;
-   s.config.notifyOnRecover = values.notifyOnRecover ?? true;
+   s.config.notifyOnDown = values.notifyOnDown != null ? values.notifyOnDown : true;
+   s.config.notifyOnRecover = values.notifyOnRecover != null ? values.notifyOnRecover : true;
    state.set("config", s.config);
    data.write("config.json", JSON.stringify(s.config, null, 2));
    console.log(`[server-ping] Setup complete \u2014 monitoring ${s.config.serverUrl}`);
@@ -754,7 +754,7 @@ var __skill_bundle = (() => {
   name: "get-ping-stats",
   description: "Get current ping statistics including uptime, total pings, failures, and latest latency.",
   input_schema: { type: "object", properties: {} },
-  async execute() {
+  execute() {
    const s = globalThis.getSkillState();
    const uptimePct = s.pingCount > 0 ? Math.round((s.pingCount - s.failCount) / s.pingCount * 1e4) / 100 : 100;
    const latest = db.get("SELECT latency_ms, status, timestamp FROM ping_log ORDER BY id DESC LIMIT 1", []);
@@ -766,7 +766,7 @@ var __skill_bundle = (() => {
     consecutiveFailures: s.consecutiveFails,
     uptimePercent: uptimePct,
     lastPing: latest ? { latencyMs: latest.latency_ms, status: latest.status, at: latest.timestamp } : null,
-    avgLatencyMs: avgLatency?.avg_ms ? Math.round(avgLatency.avg_ms) : null,
+    avgLatencyMs: avgLatency && avgLatency.avg_ms ? Math.round(avgLatency.avg_ms) : null,
     platform: platform.os()
    });
   }
@@ -785,7 +785,7 @@ var __skill_bundle = (() => {
     }
    }
   },
-  async execute(args) {
+  execute(args) {
    const limit = Math.min(Math.max(parseInt(args.limit) || 20, 1), 100);
    const rows = db.all("SELECT timestamp, url, status, latency_ms, success, error FROM ping_log ORDER BY id DESC LIMIT ?", [limit]);
    return JSON.stringify({ count: rows.length, history: rows });
@@ -797,8 +797,10 @@ var __skill_bundle = (() => {
   name: "ping-now",
   description: "Trigger an immediate ping to the configured server and return the result.",
   input_schema: { type: "object", properties: {} },
-  async execute() {
-   await globalThis.doPing?.();
+  execute() {
+   const _g3 = globalThis;
+   if (_g3.doPing)
+    _g3.doPing();
    const s = globalThis.getSkillState();
    const latest = db.get("SELECT timestamp, status, latency_ms, success, error FROM ping_log ORDER BY id DESC LIMIT 1", []);
    return JSON.stringify({ triggered: true, pingNumber: s.pingCount, result: latest });
@@ -810,7 +812,7 @@ var __skill_bundle = (() => {
   name: "list-peer-skills",
   description: "List all other running skills in the system (demonstrates inter-skill communication).",
   input_schema: { type: "object", properties: {} },
-  async execute() {
+  execute() {
    try {
     const peers = skills.list();
     return JSON.stringify({ skills: peers });
@@ -829,8 +831,8 @@ var __skill_bundle = (() => {
    properties: { url: { type: "string", description: "New server URL to monitor" } },
    required: ["url"]
   },
-  async execute(args) {
-   const url = (args.url ?? "").trim();
+  execute(args) {
+   const url = (args.url || "").trim();
    if (!url || !url.startsWith("http")) {
     return JSON.stringify({ error: "Invalid URL \u2014 must start with http:// or https://" });
    }
@@ -839,7 +841,9 @@ var __skill_bundle = (() => {
    s.config.serverUrl = url;
    state.set("config", s.config);
    console.log(`[server-ping] Server URL changed: ${oldUrl} -> ${url}`);
-   globalThis.publishState?.();
+   const _g3 = globalThis;
+   if (_g3.publishState)
+    _g3.publishState();
    return JSON.stringify({ success: true, oldUrl, newUrl: url });
   }
  };
@@ -849,10 +853,10 @@ var __skill_bundle = (() => {
   name: "read-config",
   description: "Read the current skill configuration from the data directory (demonstrates data file I/O).",
   input_schema: { type: "object", properties: {} },
-  async execute() {
+  execute() {
    try {
     const raw = data.read("config.json");
-    return raw ?? JSON.stringify({ error: "No config file found" });
+    return raw || JSON.stringify({ error: "No config file found" });
    } catch (e) {
     return JSON.stringify({ error: `Failed to read config: ${e}` });
    }
@@ -869,11 +873,11 @@ var __skill_bundle = (() => {
   const s = getSkillState2();
   const saved = state.get("config");
   if (saved) {
-   s.config.serverUrl = saved.serverUrl ?? s.config.serverUrl;
-   s.config.pingIntervalSec = saved.pingIntervalSec ?? s.config.pingIntervalSec;
-   s.config.notifyOnDown = saved.notifyOnDown ?? s.config.notifyOnDown;
-   s.config.notifyOnRecover = saved.notifyOnRecover ?? s.config.notifyOnRecover;
-   s.config.verboseLogging = saved.verboseLogging ?? s.config.verboseLogging;
+   s.config.serverUrl = saved.serverUrl != null ? saved.serverUrl : s.config.serverUrl;
+   s.config.pingIntervalSec = saved.pingIntervalSec != null ? saved.pingIntervalSec : s.config.pingIntervalSec;
+   s.config.notifyOnDown = saved.notifyOnDown != null ? saved.notifyOnDown : s.config.notifyOnDown;
+   s.config.notifyOnRecover = saved.notifyOnRecover != null ? saved.notifyOnRecover : s.config.notifyOnRecover;
+   s.config.verboseLogging = saved.verboseLogging != null ? saved.verboseLogging : s.config.verboseLogging;
   }
   if (!s.config.serverUrl) {
    const envUrl = platform.env("BACKEND_URL") || platform.env("BACKEND_URL");
@@ -884,8 +888,8 @@ var __skill_bundle = (() => {
   }
   const counters = state.get("counters");
   if (counters) {
-   s.pingCount = counters.pingCount ?? 0;
-   s.failCount = counters.failCount ?? 0;
+   s.pingCount = counters.pingCount || 0;
+   s.failCount = counters.failCount || 0;
   }
   console.log(`[server-ping] Config loaded \u2014 target: ${s.config.serverUrl}`);
  }

@@ -137,12 +137,12 @@ var __skill_bundle = (() => {
      if (typeof data === "bigint" || data && typeof data === "object" && typeof data.toJSNumber === "function") {
       let bigVal = typeof data === "bigint" ? data : data.value;
       if (typeof bigVal !== "bigint") bigVal = BigInt(data.valueOf());
-      const isNegative = bigVal < 0n;
+      const isNegative = bigVal < /* @__PURE__ */ BigInt("0");
       if (isNegative) bigVal = -bigVal;
       const bytes = [];
-      while (bigVal > 0n) {
-       bytes.push(Number(bigVal & 0xffn));
-       bigVal >>= 8n;
+      while (bigVal > /* @__PURE__ */ BigInt("0")) {
+       bytes.push(Number(bigVal & /* @__PURE__ */ BigInt("0xff")));
+       bigVal >>= /* @__PURE__ */ BigInt("8");
       }
       if (bytes.length === 0) bytes.push(0);
       if (isNegative) {
@@ -383,22 +383,22 @@ var __skill_bundle = (() => {
     readBigInt64LE(offset = 0) {
      const lo = this.readUInt32LE(offset);
      const hi = this.readInt32LE(offset + 4);
-     return BigInt(lo) | BigInt(hi) << 32n;
+     return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
     }
     readBigInt64BE(offset = 0) {
      const hi = this.readInt32BE(offset);
      const lo = this.readUInt32BE(offset + 4);
-     return BigInt(lo) | BigInt(hi) << 32n;
+     return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
     }
     readBigUInt64LE(offset = 0) {
      const lo = this.readUInt32LE(offset);
      const hi = this.readUInt32LE(offset + 4);
-     return BigInt(lo) | BigInt(hi) << 32n;
+     return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
     }
     readBigUInt64BE(offset = 0) {
      const hi = this.readUInt32BE(offset);
      const lo = this.readUInt32BE(offset + 4);
-     return BigInt(lo) | BigInt(hi) << 32n;
+     return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
     }
     readFloatLE(offset = 0) {
      const view = new DataView(this.buffer, this.byteOffset + offset, 4);
@@ -475,29 +475,29 @@ var __skill_bundle = (() => {
      return offset + 4;
     }
     writeBigInt64LE(value, offset = 0) {
-     const lo = Number(value & 0xffffffffn);
-     const hi = Number(value >> 32n & 0xffffffffn);
+     const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+     const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
      this.writeUInt32LE(lo, offset);
      this.writeInt32LE(hi, offset + 4);
      return offset + 8;
     }
     writeBigInt64BE(value, offset = 0) {
-     const lo = Number(value & 0xffffffffn);
-     const hi = Number(value >> 32n & 0xffffffffn);
+     const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+     const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
      this.writeInt32BE(hi, offset);
      this.writeUInt32BE(lo, offset + 4);
      return offset + 8;
     }
     writeBigUInt64LE(value, offset = 0) {
-     const lo = Number(value & 0xffffffffn);
-     const hi = Number(value >> 32n & 0xffffffffn);
+     const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+     const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
      this.writeUInt32LE(lo, offset);
      this.writeUInt32LE(hi, offset + 4);
      return offset + 8;
     }
     writeBigUInt64BE(value, offset = 0) {
-     const lo = Number(value & 0xffffffffn);
-     const hi = Number(value >> 32n & 0xffffffffn);
+     const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+     const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
      this.writeUInt32BE(hi, offset);
      this.writeUInt32BE(lo, offset + 4);
      return offset + 8;
@@ -769,12 +769,14 @@ var __skill_bundle = (() => {
  var MAX_RETRIES = 3;
  var DEFAULT_BACKOFF_MS = 5e3;
  function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+  }
  }
  var GMAIL_BASE_URL = "https://gmail.googleapis.com/gmail/v1";
  var GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
  var cachedSelfHostedToken = null;
- async function resolveAccessToken() {
+ function resolveAccessToken() {
   const authCred = auth.getCredential();
   if (authCred && authCred.mode === "self_hosted") {
    const creds = authCred.credentials;
@@ -787,7 +789,7 @@ var __skill_bundle = (() => {
     }
     try {
      const body = `client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&refresh_token=${encodeURIComponent(refreshToken)}&grant_type=refresh_token`;
-     const response = await net.fetch(GOOGLE_TOKEN_URL, {
+     const response = net.fetch(GOOGLE_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -812,7 +814,7 @@ var __skill_bundle = (() => {
    }
   }
   if (authCred && authCred.mode === "text") {
-   const content = authCred.credentials.content ?? "";
+   const content = authCred.credentials.content || "";
    try {
     const parsed = JSON.parse(content);
     if (parsed.access_token) {
@@ -830,7 +832,7 @@ var __skill_bundle = (() => {
    return null;
   }
   const oauthCred = oauth.getCredential();
-  if (oauthCred?.accessToken) {
+  if (oauthCred && oauthCred.accessToken) {
    return oauthCred.accessToken;
   }
   return null;
@@ -845,39 +847,40 @@ var __skill_bundle = (() => {
  function resetTokenCache() {
   cachedSelfHostedToken = null;
  }
- async function gmailFetch(endpoint, options = {}) {
+ function gmailFetch(endpoint, options = {}) {
   const cleanPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const method = options.method || "GET";
   const timeout = options.timeout || 10;
-  const accessToken = await resolveAccessToken();
+  const isBatch = cleanPath === "/batch";
   const oauthCred = oauth.getCredential();
-  const useProxy = !accessToken && !!oauthCred;
-  if (!accessToken && !useProxy) {
-   console.log("[gmail] gmailFetch: no access token and no OAuth credential");
-   return {
-    success: false,
-    error: { code: 401, message: "Gmail not connected. Complete setup first." }
-   };
-  }
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+   const accessToken = resolveAccessToken();
+   const useProxy = !accessToken && !!oauthCred;
+   if (!accessToken && !useProxy) {
+    console.log("[gmail] gmailFetch: no access token and no OAuth credential");
+    return {
+     success: false,
+     error: { code: 401, message: "Gmail not connected. Complete setup first." }
+    };
+   }
    try {
     let response;
     if (useProxy) {
      console.log("[gmail] gmailFetch (proxy):", method, cleanPath);
-     response = await oauth.fetch(cleanPath, {
+     response = oauth.fetch(cleanPath, {
       method,
       headers: { "Content-Type": "application/json", ...options.headers || {} },
       body: options.body,
       timeout
      });
     } else {
-     const url = `${GMAIL_BASE_URL}${cleanPath}`;
+     const url = isBatch ? "https://www.googleapis.com/batch/gmail/v1" : `${GMAIL_BASE_URL}${cleanPath}`;
      console.log("[gmail] gmailFetch (direct):", method, url);
-     response = await net.fetch(url, {
+     response = net.fetch(url, {
       method,
       headers: {
        Authorization: `Bearer ${accessToken}`,
-       "Content-Type": "application/json",
+       ...isBatch ? {} : { "Content-Type": "application/json" },
        ...options.headers || {}
       },
       body: options.body,
@@ -890,18 +893,15 @@ var __skill_bundle = (() => {
      const retryAfter = response.headers["retry-after"];
      const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1e3 : DEFAULT_BACKOFF_MS * (attempt + 1);
      console.log(`[gmail] gmailFetch: 429 rate-limited \u2014 retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-     await sleep(waitMs);
+     sleep(waitMs);
      continue;
     }
     if (!useProxy && response.status === 401 && attempt < MAX_RETRIES) {
      const bodyPreview = response.body ? response.body.slice(0, 200) : "(empty)";
      console.log(`[gmail] gmailFetch: 401 Unauthorized body=${bodyPreview}`);
      cachedSelfHostedToken = null;
-     const freshToken = await resolveAccessToken();
-     if (freshToken && freshToken !== accessToken) {
-      console.log("[gmail] gmailFetch: refreshed token, retrying");
-      continue;
-     }
+     console.log("[gmail] gmailFetch: cleared token cache, retrying");
+     continue;
     } else if (response.status >= 400) {
      const bodyPreview = response.body ? response.body.slice(0, 200) : "(empty)";
      console.log(`[gmail] gmailFetch: error status=${response.status} body=${bodyPreview}`);
@@ -913,6 +913,10 @@ var __skill_bundle = (() => {
      s2.rateLimitReset = parseInt(response.headers["x-ratelimit-reset"], 10) * 1e3;
     }
     if (response.status >= 200 && response.status < 300) {
+     if (options.rawBatch) {
+      s2.lastApiError = null;
+      return { success: true, data: response.body };
+     }
      const data = response.body ? JSON.parse(response.body) : void 0;
      s2.lastApiError = null;
      return { success: true, data };
@@ -933,10 +937,10 @@ var __skill_bundle = (() => {
  }
 
  // skills-ts-out/core/gmail/api/helpers.js
- async function loadGmailProfile() {
-  const response = await gmailFetch("/users/me/profile", { timeout: 10 });
+ function loadGmailProfile() {
+  const response = gmailFetch("/users/me/profile", { timeout: 10 });
   if (!response.success) {
-   throw new Error(response.error?.message || "unknown error");
+   throw new Error(response.error && response.error.message || "unknown error");
   }
   if (response.success) {
    const s2 = getGmailSkillState();
@@ -968,6 +972,20 @@ var __skill_bundle = (() => {
  init_buffer_inject();
 
  // node_modules/domelementtype/lib/esm/index.js
+ var esm_exports = {};
+ __export(esm_exports, {
+  CDATA: () => CDATA,
+  Comment: () => Comment,
+  Directive: () => Directive,
+  Doctype: () => Doctype,
+  ElementType: () => ElementType,
+  Root: () => Root,
+  Script: () => Script,
+  Style: () => Style,
+  Tag: () => Tag,
+  Text: () => Text,
+  isTag: () => isTag
+ });
  init_buffer_inject();
  var ElementType;
  (function(ElementType2) {
@@ -1194,6 +1212,9 @@ var __skill_bundle = (() => {
  }
  function isDocument(node) {
   return node.type === ElementType.Root;
+ }
+ function hasChildren(node) {
+  return Object.prototype.hasOwnProperty.call(node, "children");
  }
  function cloneNode(node, recursive = false) {
   let result;
@@ -1478,7 +1499,7 @@ var __skill_bundle = (() => {
      position++;
     }
    } else {
-    onEnd?.(data, i);
+    onEnd == null ? void 0 : onEnd(data, i);
    }
    return value === void 0 ? { matched: false } : {
     matched: true,
@@ -4017,6 +4038,51 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
  };
 
  // node_modules/domutils/lib/esm/index.js
+ var esm_exports2 = {};
+ __export(esm_exports2, {
+  DocumentPosition: () => DocumentPosition,
+  append: () => append,
+  appendChild: () => appendChild,
+  compareDocumentPosition: () => compareDocumentPosition,
+  existsOne: () => existsOne,
+  filter: () => filter,
+  find: () => find,
+  findAll: () => findAll,
+  findOne: () => findOne,
+  findOneChild: () => findOneChild,
+  getAttributeValue: () => getAttributeValue,
+  getChildren: () => getChildren,
+  getElementById: () => getElementById,
+  getElements: () => getElements,
+  getElementsByClassName: () => getElementsByClassName,
+  getElementsByTagName: () => getElementsByTagName,
+  getElementsByTagType: () => getElementsByTagType,
+  getFeed: () => getFeed,
+  getInnerHTML: () => getInnerHTML,
+  getName: () => getName,
+  getOuterHTML: () => getOuterHTML,
+  getParent: () => getParent,
+  getSiblings: () => getSiblings,
+  getText: () => getText,
+  hasAttrib: () => hasAttrib,
+  hasChildren: () => hasChildren,
+  innerText: () => innerText,
+  isCDATA: () => isCDATA,
+  isComment: () => isComment,
+  isDocument: () => isDocument,
+  isTag: () => isTag2,
+  isText: () => isText,
+  nextElementSibling: () => nextElementSibling,
+  prepend: () => prepend,
+  prependChild: () => prependChild,
+  prevElementSibling: () => prevElementSibling,
+  removeElement: () => removeElement,
+  removeSubsets: () => removeSubsets,
+  replaceElement: () => replaceElement,
+  testElement: () => testElement,
+  textContent: () => textContent,
+  uniqueSort: () => uniqueSort
+ });
  init_buffer_inject();
 
  // node_modules/domutils/lib/esm/stringify.js
@@ -4282,6 +4348,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   }
   return output;
  }
+ var esm_default = render;
  function renderNode(node, options) {
   switch (node.type) {
    case Root:
@@ -4369,20 +4436,340 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   return `<!--${elem.data}-->`;
  }
 
+ // node_modules/domutils/lib/esm/stringify.js
+ function getOuterHTML(node, options) {
+  return esm_default(node, options);
+ }
+ function getInnerHTML(node, options) {
+  return hasChildren(node) ? node.children.map((node2) => getOuterHTML(node2, options)).join("") : "";
+ }
+ function getText(node) {
+  if (Array.isArray(node))
+   return node.map(getText).join("");
+  if (isTag2(node))
+   return node.name === "br" ? "\n" : getText(node.children);
+  if (isCDATA(node))
+   return getText(node.children);
+  if (isText(node))
+   return node.data;
+  return "";
+ }
+ function textContent(node) {
+  if (Array.isArray(node))
+   return node.map(textContent).join("");
+  if (hasChildren(node) && !isComment(node)) {
+   return textContent(node.children);
+  }
+  if (isText(node))
+   return node.data;
+  return "";
+ }
+ function innerText(node) {
+  if (Array.isArray(node))
+   return node.map(innerText).join("");
+  if (hasChildren(node) && (node.type === ElementType.Tag || isCDATA(node))) {
+   return innerText(node.children);
+  }
+  if (isText(node))
+   return node.data;
+  return "";
+ }
+
  // node_modules/domutils/lib/esm/traversal.js
  init_buffer_inject();
+ function getChildren(elem) {
+  return hasChildren(elem) ? elem.children : [];
+ }
+ function getParent(elem) {
+  return elem.parent || null;
+ }
+ function getSiblings(elem) {
+  const parent = getParent(elem);
+  if (parent != null)
+   return getChildren(parent);
+  const siblings = [elem];
+  let { prev, next } = elem;
+  while (prev != null) {
+   siblings.unshift(prev);
+   ({ prev } = prev);
+  }
+  while (next != null) {
+   siblings.push(next);
+   ({ next } = next);
+  }
+  return siblings;
+ }
+ function getAttributeValue(elem, name2) {
+  var _a2;
+  return (_a2 = elem.attribs) === null || _a2 === void 0 ? void 0 : _a2[name2];
+ }
+ function hasAttrib(elem, name2) {
+  return elem.attribs != null && Object.prototype.hasOwnProperty.call(elem.attribs, name2) && elem.attribs[name2] != null;
+ }
+ function getName(elem) {
+  return elem.name;
+ }
+ function nextElementSibling(elem) {
+  let { next } = elem;
+  while (next !== null && !isTag2(next))
+   ({ next } = next);
+  return next;
+ }
+ function prevElementSibling(elem) {
+  let { prev } = elem;
+  while (prev !== null && !isTag2(prev))
+   ({ prev } = prev);
+  return prev;
+ }
 
  // node_modules/domutils/lib/esm/manipulation.js
  init_buffer_inject();
+ function removeElement(elem) {
+  if (elem.prev)
+   elem.prev.next = elem.next;
+  if (elem.next)
+   elem.next.prev = elem.prev;
+  if (elem.parent) {
+   const childs = elem.parent.children;
+   const childsIndex = childs.lastIndexOf(elem);
+   if (childsIndex >= 0) {
+    childs.splice(childsIndex, 1);
+   }
+  }
+  elem.next = null;
+  elem.prev = null;
+  elem.parent = null;
+ }
+ function replaceElement(elem, replacement) {
+  const prev = replacement.prev = elem.prev;
+  if (prev) {
+   prev.next = replacement;
+  }
+  const next = replacement.next = elem.next;
+  if (next) {
+   next.prev = replacement;
+  }
+  const parent = replacement.parent = elem.parent;
+  if (parent) {
+   const childs = parent.children;
+   childs[childs.lastIndexOf(elem)] = replacement;
+   elem.parent = null;
+  }
+ }
+ function appendChild(parent, child) {
+  removeElement(child);
+  child.next = null;
+  child.parent = parent;
+  if (parent.children.push(child) > 1) {
+   const sibling = parent.children[parent.children.length - 2];
+   sibling.next = child;
+   child.prev = sibling;
+  } else {
+   child.prev = null;
+  }
+ }
+ function append(elem, next) {
+  removeElement(next);
+  const { parent } = elem;
+  const currNext = elem.next;
+  next.next = currNext;
+  next.prev = elem;
+  elem.next = next;
+  next.parent = parent;
+  if (currNext) {
+   currNext.prev = next;
+   if (parent) {
+    const childs = parent.children;
+    childs.splice(childs.lastIndexOf(currNext), 0, next);
+   }
+  } else if (parent) {
+   parent.children.push(next);
+  }
+ }
+ function prependChild(parent, child) {
+  removeElement(child);
+  child.parent = parent;
+  child.prev = null;
+  if (parent.children.unshift(child) !== 1) {
+   const sibling = parent.children[1];
+   sibling.prev = child;
+   child.next = sibling;
+  } else {
+   child.next = null;
+  }
+ }
+ function prepend(elem, prev) {
+  removeElement(prev);
+  const { parent } = elem;
+  if (parent) {
+   const childs = parent.children;
+   childs.splice(childs.indexOf(elem), 0, prev);
+  }
+  if (elem.prev) {
+   elem.prev.next = prev;
+  }
+  prev.parent = parent;
+  prev.prev = elem.prev;
+  prev.next = elem;
+  elem.prev = prev;
+ }
 
  // node_modules/domutils/lib/esm/querying.js
  init_buffer_inject();
+ function filter(test, node, recurse = true, limit = Infinity) {
+  return find(test, Array.isArray(node) ? node : [node], recurse, limit);
+ }
+ function find(test, nodes, recurse, limit) {
+  const result = [];
+  const nodeStack = [Array.isArray(nodes) ? nodes : [nodes]];
+  const indexStack = [0];
+  for (; ; ) {
+   if (indexStack[0] >= nodeStack[0].length) {
+    if (indexStack.length === 1) {
+     return result;
+    }
+    nodeStack.shift();
+    indexStack.shift();
+    continue;
+   }
+   const elem = nodeStack[0][indexStack[0]++];
+   if (test(elem)) {
+    result.push(elem);
+    if (--limit <= 0)
+     return result;
+   }
+   if (recurse && hasChildren(elem) && elem.children.length > 0) {
+    indexStack.unshift(0);
+    nodeStack.unshift(elem.children);
+   }
+  }
+ }
+ function findOneChild(test, nodes) {
+  return nodes.find(test);
+ }
+ function findOne(test, nodes, recurse = true) {
+  const searchedNodes = Array.isArray(nodes) ? nodes : [nodes];
+  for (let i = 0; i < searchedNodes.length; i++) {
+   const node = searchedNodes[i];
+   if (isTag2(node) && test(node)) {
+    return node;
+   }
+   if (recurse && hasChildren(node) && node.children.length > 0) {
+    const found = findOne(test, node.children, true);
+    if (found)
+     return found;
+   }
+  }
+  return null;
+ }
+ function existsOne(test, nodes) {
+  return (Array.isArray(nodes) ? nodes : [nodes]).some((node) => isTag2(node) && test(node) || hasChildren(node) && existsOne(test, node.children));
+ }
+ function findAll(test, nodes) {
+  const result = [];
+  const nodeStack = [Array.isArray(nodes) ? nodes : [nodes]];
+  const indexStack = [0];
+  for (; ; ) {
+   if (indexStack[0] >= nodeStack[0].length) {
+    if (nodeStack.length === 1) {
+     return result;
+    }
+    nodeStack.shift();
+    indexStack.shift();
+    continue;
+   }
+   const elem = nodeStack[0][indexStack[0]++];
+   if (isTag2(elem) && test(elem))
+    result.push(elem);
+   if (hasChildren(elem) && elem.children.length > 0) {
+    indexStack.unshift(0);
+    nodeStack.unshift(elem.children);
+   }
+  }
+ }
 
  // node_modules/domutils/lib/esm/legacy.js
  init_buffer_inject();
+ var Checks = {
+  tag_name(name2) {
+   if (typeof name2 === "function") {
+    return (elem) => isTag2(elem) && name2(elem.name);
+   } else if (name2 === "*") {
+    return isTag2;
+   }
+   return (elem) => isTag2(elem) && elem.name === name2;
+  },
+  tag_type(type) {
+   if (typeof type === "function") {
+    return (elem) => type(elem.type);
+   }
+   return (elem) => elem.type === type;
+  },
+  tag_contains(data) {
+   if (typeof data === "function") {
+    return (elem) => isText(elem) && data(elem.data);
+   }
+   return (elem) => isText(elem) && elem.data === data;
+  }
+ };
+ function getAttribCheck(attrib, value) {
+  if (typeof value === "function") {
+   return (elem) => isTag2(elem) && value(elem.attribs[attrib]);
+  }
+  return (elem) => isTag2(elem) && elem.attribs[attrib] === value;
+ }
+ function combineFuncs(a, b) {
+  return (elem) => a(elem) || b(elem);
+ }
+ function compileTest(options) {
+  const funcs = Object.keys(options).map((key) => {
+   const value = options[key];
+   return Object.prototype.hasOwnProperty.call(Checks, key) ? Checks[key](value) : getAttribCheck(key, value);
+  });
+  return funcs.length === 0 ? null : funcs.reduce(combineFuncs);
+ }
+ function testElement(options, node) {
+  const test = compileTest(options);
+  return test ? test(node) : true;
+ }
+ function getElements(options, nodes, recurse, limit = Infinity) {
+  const test = compileTest(options);
+  return test ? filter(test, nodes, recurse, limit) : [];
+ }
+ function getElementById(id, nodes, recurse = true) {
+  if (!Array.isArray(nodes))
+   nodes = [nodes];
+  return findOne(getAttribCheck("id", id), nodes, recurse);
+ }
+ function getElementsByTagName(tagName, nodes, recurse = true, limit = Infinity) {
+  return filter(Checks["tag_name"](tagName), nodes, recurse, limit);
+ }
+ function getElementsByClassName(className, nodes, recurse = true, limit = Infinity) {
+  return filter(getAttribCheck("class", className), nodes, recurse, limit);
+ }
+ function getElementsByTagType(type, nodes, recurse = true, limit = Infinity) {
+  return filter(Checks["tag_type"](type), nodes, recurse, limit);
+ }
 
  // node_modules/domutils/lib/esm/helpers.js
  init_buffer_inject();
+ function removeSubsets(nodes) {
+  let idx = nodes.length;
+  while (--idx >= 0) {
+   const node = nodes[idx];
+   if (idx > 0 && nodes.lastIndexOf(node, idx - 1) >= 0) {
+    nodes.splice(idx, 1);
+    continue;
+   }
+   for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
+    if (nodes.includes(ancestor)) {
+     nodes.splice(idx, 1);
+     break;
+    }
+   }
+  }
+  return nodes;
+ }
  var DocumentPosition;
  (function(DocumentPosition2) {
   DocumentPosition2[DocumentPosition2["DISCONNECTED"] = 1] = "DISCONNECTED";
@@ -4391,9 +4778,182 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   DocumentPosition2[DocumentPosition2["CONTAINS"] = 8] = "CONTAINS";
   DocumentPosition2[DocumentPosition2["CONTAINED_BY"] = 16] = "CONTAINED_BY";
  })(DocumentPosition || (DocumentPosition = {}));
+ function compareDocumentPosition(nodeA, nodeB) {
+  const aParents = [];
+  const bParents = [];
+  if (nodeA === nodeB) {
+   return 0;
+  }
+  let current = hasChildren(nodeA) ? nodeA : nodeA.parent;
+  while (current) {
+   aParents.unshift(current);
+   current = current.parent;
+  }
+  current = hasChildren(nodeB) ? nodeB : nodeB.parent;
+  while (current) {
+   bParents.unshift(current);
+   current = current.parent;
+  }
+  const maxIdx = Math.min(aParents.length, bParents.length);
+  let idx = 0;
+  while (idx < maxIdx && aParents[idx] === bParents[idx]) {
+   idx++;
+  }
+  if (idx === 0) {
+   return DocumentPosition.DISCONNECTED;
+  }
+  const sharedParent = aParents[idx - 1];
+  const siblings = sharedParent.children;
+  const aSibling = aParents[idx];
+  const bSibling = bParents[idx];
+  if (siblings.indexOf(aSibling) > siblings.indexOf(bSibling)) {
+   if (sharedParent === nodeB) {
+    return DocumentPosition.FOLLOWING | DocumentPosition.CONTAINED_BY;
+   }
+   return DocumentPosition.FOLLOWING;
+  }
+  if (sharedParent === nodeA) {
+   return DocumentPosition.PRECEDING | DocumentPosition.CONTAINS;
+  }
+  return DocumentPosition.PRECEDING;
+ }
+ function uniqueSort(nodes) {
+  nodes = nodes.filter((node, i, arr) => !arr.includes(node, i + 1));
+  nodes.sort((a, b) => {
+   const relative = compareDocumentPosition(a, b);
+   if (relative & DocumentPosition.PRECEDING) {
+    return -1;
+   } else if (relative & DocumentPosition.FOLLOWING) {
+    return 1;
+   }
+   return 0;
+  });
+  return nodes;
+ }
 
  // node_modules/domutils/lib/esm/feeds.js
  init_buffer_inject();
+ function getFeed(doc) {
+  const feedRoot = getOneElement(isValidFeed, doc);
+  return !feedRoot ? null : feedRoot.name === "feed" ? getAtomFeed(feedRoot) : getRssFeed(feedRoot);
+ }
+ function getAtomFeed(feedRoot) {
+  var _a2;
+  const childs = feedRoot.children;
+  const feed = {
+   type: "atom",
+   items: getElementsByTagName("entry", childs).map((item) => {
+    var _a3;
+    const { children } = item;
+    const entry = { media: getMediaElements(children) };
+    addConditionally(entry, "id", "id", children);
+    addConditionally(entry, "title", "title", children);
+    const href2 = (_a3 = getOneElement("link", children)) === null || _a3 === void 0 ? void 0 : _a3.attribs["href"];
+    if (href2) {
+     entry.link = href2;
+    }
+    const description = fetch("summary", children) || fetch("content", children);
+    if (description) {
+     entry.description = description;
+    }
+    const pubDate = fetch("updated", children);
+    if (pubDate) {
+     entry.pubDate = new Date(pubDate);
+    }
+    return entry;
+   })
+  };
+  addConditionally(feed, "id", "id", childs);
+  addConditionally(feed, "title", "title", childs);
+  const href = (_a2 = getOneElement("link", childs)) === null || _a2 === void 0 ? void 0 : _a2.attribs["href"];
+  if (href) {
+   feed.link = href;
+  }
+  addConditionally(feed, "description", "subtitle", childs);
+  const updated = fetch("updated", childs);
+  if (updated) {
+   feed.updated = new Date(updated);
+  }
+  addConditionally(feed, "author", "email", childs, true);
+  return feed;
+ }
+ function getRssFeed(feedRoot) {
+  var _a2, _b;
+  const childs = (_b = (_a2 = getOneElement("channel", feedRoot.children)) === null || _a2 === void 0 ? void 0 : _a2.children) !== null && _b !== void 0 ? _b : [];
+  const feed = {
+   type: feedRoot.name.substr(0, 3),
+   id: "",
+   items: getElementsByTagName("item", feedRoot.children).map((item) => {
+    const { children } = item;
+    const entry = { media: getMediaElements(children) };
+    addConditionally(entry, "id", "guid", children);
+    addConditionally(entry, "title", "title", children);
+    addConditionally(entry, "link", "link", children);
+    addConditionally(entry, "description", "description", children);
+    const pubDate = fetch("pubDate", children) || fetch("dc:date", children);
+    if (pubDate)
+     entry.pubDate = new Date(pubDate);
+    return entry;
+   })
+  };
+  addConditionally(feed, "title", "title", childs);
+  addConditionally(feed, "link", "link", childs);
+  addConditionally(feed, "description", "description", childs);
+  const updated = fetch("lastBuildDate", childs);
+  if (updated) {
+   feed.updated = new Date(updated);
+  }
+  addConditionally(feed, "author", "managingEditor", childs, true);
+  return feed;
+ }
+ var MEDIA_KEYS_STRING = ["url", "type", "lang"];
+ var MEDIA_KEYS_INT = [
+  "fileSize",
+  "bitrate",
+  "framerate",
+  "samplingrate",
+  "channels",
+  "duration",
+  "height",
+  "width"
+ ];
+ function getMediaElements(where) {
+  return getElementsByTagName("media:content", where).map((elem) => {
+   const { attribs } = elem;
+   const media = {
+    medium: attribs["medium"],
+    isDefault: !!attribs["isDefault"]
+   };
+   for (const attrib of MEDIA_KEYS_STRING) {
+    if (attribs[attrib]) {
+     media[attrib] = attribs[attrib];
+    }
+   }
+   for (const attrib of MEDIA_KEYS_INT) {
+    if (attribs[attrib]) {
+     media[attrib] = parseInt(attribs[attrib], 10);
+    }
+   }
+   if (attribs["expression"]) {
+    media.expression = attribs["expression"];
+   }
+   return media;
+  });
+ }
+ function getOneElement(tagName, node) {
+  return getElementsByTagName(tagName, node, true, 1)[0];
+ }
+ function fetch(tagName, where, recurse = false) {
+  return textContent(getElementsByTagName(tagName, where, recurse, 1)).trim();
+ }
+ function addConditionally(obj, prop, tagName, where, recurse = false) {
+  const val = fetch(tagName, where, recurse);
+  if (val)
+   obj[prop] = val;
+ }
+ function isValidFeed(value) {
+  return value === "rss" || value === "feed" || value === "rdf:RDF";
+ }
 
  // node_modules/htmlparser2/lib/esm/index.js
  function parseDocument(data, options) {
@@ -5065,7 +5625,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   */
   closeBlock({ trailingLineBreaks = 1, blockTransform = void 0 } = {}) {
    const block = this._popStackItem();
-   const blockText = blockTransform ? blockTransform(getText(block)) : getText(block);
+   const blockText = blockTransform ? blockTransform(getText2(block)) : getText2(block);
    addText(this._stackItem, blockText, block.leadingLineBreaks, Math.max(block.stashedLineBreaks, trailingLineBreaks));
   }
   /**
@@ -5128,7 +5688,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    const prefixLength = Math.max(listItem.prefix.length, list.maxPrefixLength);
    const spacing = "\n" + " ".repeat(prefixLength);
    const prefix = list.prefixAlign === "right" ? listItem.prefix.padStart(prefixLength) : listItem.prefix.padEnd(prefixLength);
-   const text = prefix + getText(listItem).replace(/\n/g, spacing);
+   const text = prefix + getText2(listItem).replace(/\n/g, spacing);
    addText(
     list,
     text,
@@ -5147,7 +5707,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   */
   closeList({ trailingLineBreaks = 2 } = {}) {
    const list = this._popStackItem();
-   const text = getText(list);
+   const text = getText2(list);
    if (text) {
     addText(this._stackItem, text, list.leadingLineBreaks, trailingLineBreaks);
    }
@@ -5193,7 +5753,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   */
   closeTableCell({ colspan = 1, rowspan = 1 } = {}) {
    const cell = this._popStackItem();
-   const text = trimCharacter(getText(cell), "\n");
+   const text = trimCharacter(getText2(cell), "\n");
    cell.next.cells.push({ colspan, rowspan, text });
   }
   /**
@@ -5231,10 +5791,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   * @returns { string }
   */
   toString() {
-   return getText(this._stackItem.getRoot());
+   return getText2(this._stackItem.getRoot());
   }
  };
- function getText(stackItem) {
+ function getText2(stackItem) {
   if (!(stackItem instanceof BlockStackItem || stackItem instanceof ListItemStackItem || stackItem instanceof TableCellStackItem)) {
    throw new Error("Only blocks, list items and table cells can be requested for text contents.");
   }
@@ -5244,7 +5804,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   if (!(stackItem instanceof BlockStackItem || stackItem instanceof ListItemStackItem || stackItem instanceof TableCellStackItem)) {
    throw new Error("Only blocks, list items and table cells can contain text.");
   }
-  const parentText = getText(stackItem);
+  const parentText = getText2(stackItem);
   const lineBreaks = Math.max(stackItem.stashedLineBreaks, leadingLineBreaks);
   stackItem.inlineTextBuilder.clear();
   if (parentText) {
@@ -5742,7 +6302,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   builder.openTable();
   elem.children.forEach(walkTable);
   builder.closeTable({
-   tableToString: (rows) => tableToString(rows, formatOptions.rowSpacing ?? 0, formatOptions.colSpacing ?? 3),
+   tableToString: (rows) => {
+    var _a2, _b;
+    return tableToString(rows, (_a2 = formatOptions.rowSpacing) != null ? _a2 : 0, (_b = formatOptions.colSpacing) != null ? _b : 3);
+   },
    leadingLineBreaks: formatOptions.leadingLineBreaks,
    trailingLineBreaks: formatOptions.trailingLineBreaks
   });
@@ -5966,7 +6529,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
 
  // skills-ts-out/core/gmail/db/helpers.js
  function getMessageHeaders(message) {
-  const p = message?.payload;
+  const p = message ? message.payload : null;
   if (!p)
    return null;
   if (Array.isArray(p.headers) && p.headers.length > 0)
@@ -5986,21 +6549,28 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   const headers = getMessageHeaders(message);
   if (!headers) {
    console.warn("[gmail] upsertEmail: no headers found (payload or first part)", {
-    id: message?.id,
-    hasPayload: !!message?.payload
+    id: message ? message.id : null,
+    hasPayload: !!(message ? message.payload : null)
    });
    return;
   }
-  const subject = headers.find((h) => h.name.toLowerCase() === "subject")?.value ?? "";
-  const from = headers.find((h) => h.name.toLowerCase() === "from")?.value ?? "";
-  const to = headers.find((h) => h.name.toLowerCase() === "to")?.value ?? "";
-  const cc = headers.find((h) => h.name.toLowerCase() === "cc")?.value ?? null;
-  const bcc = headers.find((h) => h.name.toLowerCase() === "bcc")?.value ?? null;
-  const dateHeader = headers.find((h) => h.name.toLowerCase() === "date")?.value;
+  const subjectHeader = headers.find((h) => h.name.toLowerCase() === "subject");
+  const subject = subjectHeader ? subjectHeader.value : "";
+  const fromHeader = headers.find((h) => h.name.toLowerCase() === "from");
+  const from = fromHeader ? fromHeader.value : "";
+  const toHeader = headers.find((h) => h.name.toLowerCase() === "to");
+  const to = toHeader ? toHeader.value : "";
+  const ccHeader = headers.find((h) => h.name.toLowerCase() === "cc");
+  const cc = ccHeader ? ccHeader.value : null;
+  const bccHeader = headers.find((h) => h.name.toLowerCase() === "bcc");
+  const bcc = bccHeader ? bccHeader.value : null;
+  const dateHeaderObj = headers.find((h) => h.name.toLowerCase() === "date");
+  const dateHeader = dateHeaderObj ? dateHeaderObj.value : void 0;
   const fromMatch = from.match(/(.+?)\s*<([^>]+)>/) || [null, from, from];
-  const senderName = fromMatch[1]?.trim().replace(/^["']|["']$/g, "") ?? null;
-  const senderEmail = fromMatch[2]?.trim() || from;
-  const internalDate = message.internalDate ?? "0";
+  const senderNameRaw = fromMatch[1] ? fromMatch[1].trim().replace(/^["']|["']$/g, "") : null;
+  const senderName = senderNameRaw !== null && senderNameRaw !== void 0 ? senderNameRaw : null;
+  const senderEmail = (fromMatch[2] ? fromMatch[2].trim() : "") || from;
+  const internalDate = message.internalDate !== null && message.internalDate !== void 0 ? message.internalDate : "0";
   const date = dateHeader ? new Date(dateHeader).getTime() : parseInt(internalDate, 10);
   const labelIds = Array.isArray(message.labelIds) ? message.labelIds : [];
   const isRead = !labelIds.includes("UNREAD");
@@ -6034,8 +6604,8 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    size_estimate, history_id, internal_date, updated_at
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
    cid,
-   message.id ?? "",
-   message.threadId ?? "",
+   message.id || "",
+   message.threadId || "",
    subject,
    senderEmail,
    senderName,
@@ -6043,9 +6613,9 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    cc,
    bcc,
    Number.isFinite(date) ? date : 0,
-   message.snippet ?? "",
-   bodyText ?? null,
-   bodyHtml ?? null,
+   message.snippet || "",
+   bodyText !== null && bodyText !== void 0 ? bodyText : null,
+   bodyHtml !== null && bodyHtml !== void 0 ? bodyHtml : null,
    isRead ? 1 : 0,
    isImportant ? 1 : 0,
    isStarred ? 1 : 0,
@@ -6053,7 +6623,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    sensitive ? 1 : 0,
    JSON.stringify(labelIds),
    typeof message.sizeEstimate === "number" ? message.sizeEstimate : 0,
-   message.historyId ?? "",
+   message.historyId || "",
    internalDate,
    now
   ]);
@@ -6079,8 +6649,8 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    label.messagesUnread || 0,
    label.threadsTotal || 0,
    label.threadsUnread || 0,
-   label.color?.textColor || null,
-   label.color?.backgroundColor || null,
+   label.color && label.color.textColor || null,
+   label.color && label.color.backgroundColor || null,
    now
   ]);
  }
@@ -6110,7 +6680,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
  function getEmailCount() {
   const cid = credId();
   const row = db.get("SELECT COUNT(*) as count FROM emails WHERE credential_id = ?", [cid]);
-  return row?.count ?? 0;
+  return row && row.count !== null && row.count !== void 0 ? row.count : 0;
  }
  function emailExists(id) {
   const cid = credId();
@@ -6132,22 +6702,25 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    emailId
   ]);
  }
- function getUnsubmittedEmails(limit = 500) {
+ function getUningestedEmails(limit = 500) {
   const cid = credId();
-  return db.all("SELECT * FROM emails WHERE credential_id = ? AND backend_submitted = 0 AND is_sensitive = 0 ORDER BY date ASC LIMIT ?", [cid, limit]);
+  return db.all("SELECT * FROM emails WHERE credential_id = ? AND ingested = 0 AND is_sensitive = 0 ORDER BY date ASC LIMIT ?", [cid, limit]);
  }
- function markSensitiveAsSubmitted() {
+ function markSensitiveAsIngested() {
   const cid = credId();
-  db.exec("UPDATE emails SET backend_submitted = 1 WHERE credential_id = ? AND is_sensitive = 1 AND backend_submitted = 0", [cid]);
+  db.exec("UPDATE emails SET ingested = 1 WHERE credential_id = ? AND is_sensitive = 1 AND ingested = 0", [cid]);
  }
- function markEmailsSubmitted(ids) {
+ function markEmailsIngested(ids) {
   if (ids.length === 0)
    return;
   const cid = credId();
   for (let i = 0; i < ids.length; i += 99) {
    const batch = ids.slice(i, i + 99);
    const placeholders = batch.map(() => "?").join(",");
-   db.exec(`UPDATE emails SET backend_submitted = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [cid, ...batch]);
+   db.exec(`UPDATE emails SET ingested = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [
+    cid,
+    ...batch
+   ]);
   }
  }
  var SENSITIVE_PATTERNS = [
@@ -6183,20 +6756,20 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   return false;
  }
  function hasEmailAttachments(message) {
-  const p = message?.payload;
+  const p = message ? message.payload : null;
   if (!p)
    return false;
-  if (p.body?.attachmentId)
+  if (p.body && p.body.attachmentId)
    return true;
   if (Array.isArray(p.parts)) {
-   return p.parts.some((part) => part.body?.attachmentId || part.filename && part.filename.length > 0);
+   return p.parts.some((part) => part.body && part.body.attachmentId || part.filename && part.filename.length > 0);
   }
   return checkPart(p);
  }
  function checkPart(part) {
   if (!part)
    return false;
-  if (part.body?.attachmentId)
+  if (part.body && part.body.attachmentId)
    return true;
   if (part.filename && part.filename.length > 0)
    return true;
@@ -6205,10 +6778,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   return false;
  }
  function extractTextBody(message) {
-  const p = message?.payload;
+  const p = message ? message.payload : null;
   if (!p)
    return null;
-  if (p.mimeType === "text/plain" && p.body?.data) {
+  if (p.mimeType === "text/plain" && p.body && p.body.data) {
    try {
     return atob(p.body.data);
    } catch {
@@ -6217,7 +6790,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   }
   if (Array.isArray(p.parts)) {
    for (const part of p.parts) {
-    if (part.mimeType === "text/plain" && part.body?.data) {
+    if (part.mimeType === "text/plain" && part.body && part.body.data) {
      try {
       return atob(part.body.data);
      } catch {
@@ -6229,10 +6802,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   return null;
  }
  function extractHtmlBody(message) {
-  const p = message?.payload;
+  const p = message ? message.payload : null;
   if (!p)
    return null;
-  if (p.mimeType === "text/html" && p.body?.data) {
+  if (p.mimeType === "text/html" && p.body && p.body.data) {
    try {
     return atob(p.body.data);
    } catch {
@@ -6241,7 +6814,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   }
   if (Array.isArray(p.parts)) {
    for (const part of p.parts) {
-    if (part.mimeType === "text/html" && part.body?.data) {
+    if (part.mimeType === "text/html" && part.body && part.body.data) {
      try {
       return atob(part.body.data);
      } catch {
@@ -6254,28 +6827,28 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
  }
  function insertEmailAttachments(message) {
   const cid = credId();
-  const p = message?.payload;
+  const p = message ? message.payload : null;
   if (!p)
    return;
   const attachments = [];
-  if (p.body?.attachmentId && p.filename) {
+  if (p.body && p.body.attachmentId && p.filename) {
    attachments.push({
     attachmentId: p.body.attachmentId,
     filename: p.filename,
-    mimeType: p.mimeType ?? "",
-    size: p.body.size ?? 0,
-    partId: p.partId ?? ""
+    mimeType: p.mimeType || "",
+    size: p.body.size !== null && p.body.size !== void 0 ? p.body.size : 0,
+    partId: p.partId || ""
    });
   }
   if (Array.isArray(p.parts)) {
    p.parts.forEach((part) => {
-    if (part.body?.attachmentId && part.filename) {
+    if (part.body && part.body.attachmentId && part.filename) {
      attachments.push({
       attachmentId: part.body.attachmentId,
       filename: part.filename,
-      mimeType: part.mimeType ?? "",
-      size: part.body.size ?? 0,
-      partId: part.partId ?? ""
+      mimeType: part.mimeType || "",
+      size: part.body.size !== null && part.body.size !== void 0 ? part.body.size : 0,
+      partId: part.partId || ""
      });
     }
    });
@@ -6383,9 +6956,9 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    }
    console.log("[gmail] Added credential_id column to all tables");
   }
-  if (!columnNames.has("backend_submitted")) {
-   db.exec("ALTER TABLE emails ADD COLUMN backend_submitted INTEGER NOT NULL DEFAULT 0", []);
-   console.log("[gmail] Added backend_submitted column to emails table");
+  if (!columnNames.has("ingested")) {
+   db.exec("ALTER TABLE emails ADD COLUMN ingested INTEGER NOT NULL DEFAULT 0", []);
+   console.log("[gmail] Added ingested column to emails table");
   }
   if (!columnNames.has("is_sensitive")) {
    db.exec("ALTER TABLE emails ADD COLUMN is_sensitive INTEGER NOT NULL DEFAULT 0", []);
@@ -6397,7 +6970,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   db.exec("CREATE INDEX IF NOT EXISTS idx_emails_sender ON emails (credential_id, sender_email)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_emails_labels ON emails (credential_id, labels)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_emails_is_read ON emails (credential_id, is_read)", []);
-  db.exec("CREATE INDEX IF NOT EXISTS idx_emails_backend_submitted ON emails (credential_id, backend_submitted)", []);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_emails_ingested ON emails (credential_id, ingested)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_emails_is_sensitive ON emails (credential_id, is_sensitive)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_threads_cred ON threads (credential_id)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_threads_date ON threads (credential_id, last_message_date DESC)", []);
@@ -6415,7 +6988,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
  function syncIntegrationMetadata(params) {
   try {
    const memoryBridge = globalThis.memory;
-   if (typeof memoryBridge?.insert !== "function")
+   if (typeof (memoryBridge == null ? void 0 : memoryBridge.insert) !== "function")
     return;
    memoryBridge.insert(params);
   } catch (error) {
@@ -6425,8 +6998,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
 
  // skills-ts-out/core/gmail/sync.js
  var SYNC_WINDOW_DAYS = 30;
- var PAGE_SIZE = 20;
+ var PAGE_SIZE = 100;
  var MAX_PAGES = 10;
+ var MAX_EMAILS = 1e3;
+ var BATCH_SIZE = 50;
  function emitSyncProgress(message, progress) {
   const s2 = getGmailSkillState();
   s2.syncStatus.syncProgress = progress;
@@ -6455,59 +7030,181 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   const d = new Date(ms);
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
  }
- async function fetchMessagePage(query, pageToken) {
+ function fetchMessagePage(query, pageToken) {
   const params = [`maxResults=${PAGE_SIZE}`, `q=${encodeURIComponent(query)}`];
   if (pageToken)
    params.push(`pageToken=${encodeURIComponent(pageToken)}`);
-  const response = await gmailFetch(`/users/me/messages?${params.join("&")}`);
-  if (!response.success || !response.data?.messages) {
+  const response = gmailFetch(`/users/me/messages?${params.join("&")}`);
+  if (!response.success || !response.data || !response.data.messages) {
    if (response.error)
     console.error(`[gmail-sync] List error: ${response.error.message}`);
    return { messages: [] };
   }
   return { messages: response.data.messages, nextPageToken: response.data.nextPageToken };
  }
- async function syncMessage(msgId) {
-  if (emailExists(msgId))
-   return false;
-  const msgResponse = await gmailFetch(`/users/me/messages/${msgId}`);
-  if (msgResponse.success && msgResponse.data) {
-   const s2 = getGmailSkillState();
-   upsertEmail(msgResponse.data, !s2.config.showSensitiveMessages);
-   s2.syncStatus.totalEmails++;
-   publishSkillState();
-   return true;
+ function batchFetchMessages(msgIds) {
+  if (msgIds.length === 0)
+   return [];
+  const boundary = "batch_gmail_sync_" + Date.now();
+  const parts = msgIds.map((id, i) => {
+   return "--" + boundary + "\r\nContent-Type: application/http\r\nContent-ID: <item" + i + ">\r\n\r\nGET /gmail/v1/users/me/messages/" + id + "?format=full\r\n\r\n";
+  });
+  const body = parts.join("") + "--" + boundary + "--\r\n";
+  const response = gmailFetch("/batch", {
+   method: "POST",
+   headers: { "Content-Type": "multipart/mixed; boundary=" + boundary },
+   body,
+   timeout: 60,
+   rawBatch: true
+  });
+  if (!response.success || !response.data) {
+   console.warn("[gmail-sync] Batch API failed, falling back to individual fetches:", response.error ? response.error.message : "unknown");
+   return fetchMessagesIndividually(msgIds);
   }
-  return false;
+  const messages = parseBatchResponse(response.data);
+  if (messages.length < msgIds.length) {
+   const fetchedIds = new Set(messages.map((m) => m.id));
+   const missingIds = msgIds.filter((id) => !fetchedIds.has(id));
+   if (missingIds.length > 0) {
+    console.log("[gmail-sync] Batch missed " + missingIds.length + " messages, fetching individually");
+    const fallback = fetchMessagesIndividually(missingIds);
+    for (const msg of fallback)
+     messages.push(msg);
+   }
+  }
+  return messages;
  }
- async function runSyncPages(query, maxPages, log) {
+ function fetchMessagesIndividually(msgIds) {
+  const messages = [];
+  for (const id of msgIds) {
+   const resp = gmailFetch("/users/me/messages/" + id);
+   if (resp.success && resp.data) {
+    messages.push(resp.data);
+   }
+  }
+  return messages;
+ }
+ function parseBatchResponse(raw) {
+  const messages = [];
+  const firstLine = raw.split("\r\n")[0] || raw.split("\n")[0] || "";
+  const bnd = firstLine.trim();
+  if (!bnd.startsWith("--"))
+   return messages;
+  const parts = raw.split(bnd);
+  for (const part of parts) {
+   if (part.trim() === "" || part.trim() === "--")
+    continue;
+   const jsonMatch = part.match(/\{[\s\S]*\}/);
+   if (!jsonMatch)
+    continue;
+   try {
+    const msg = JSON.parse(jsonMatch[0]);
+    if (msg.error) {
+     console.warn("[gmail-sync] Batch item error:", JSON.stringify(msg.error).slice(0, 100));
+     continue;
+    }
+    if (msg.id) {
+     messages.push(msg);
+    }
+   } catch {
+   }
+  }
+  return messages;
+ }
+ function syncAndIngestMessage(msg, redactSensitive) {
+  const labelIds = Array.isArray(msg.labelIds) ? msg.labelIds : [];
+  if (labelIds.includes("SPAM") || labelIds.includes("TRASH")) {
+   return false;
+  }
+  const existing = getEmailById(msg.id);
+  if (existing && existing.ingested === 1) {
+   return false;
+  }
+  try {
+   upsertEmail(msg, redactSensitive);
+  } catch (e2) {
+   console.error("[gmail-sync] FAIL upsert " + msg.id + ": " + e2);
+   return false;
+  }
+  const content = (msg.snippet || "").trim();
+  let subj = "";
+  const payload = msg.payload;
+  if (payload && Array.isArray(payload.headers)) {
+   for (const h of payload.headers) {
+    if (h.name.toLowerCase() === "subject") {
+     subj = h.value;
+     break;
+    }
+   }
+  }
+  if (content.length >= MIN_CONTENT_LENGTH) {
+   try {
+    memory.insert({
+     title: subj || "Email " + msg.id,
+     content,
+     sourceType: "email",
+     documentId: (msg.internalDate || Date.now()) + "-gmail-email-" + msg.id,
+     metadata: { source: "gmail", type: "email", emailId: msg.id, threadId: msg.threadId },
+     createdAt: msg.internalDate ? parseInt(msg.internalDate, 10) / 1e3 : void 0
+    });
+    markEmailsIngested([msg.id]);
+   } catch (e2) {
+    console.error("[gmail-sync] FAIL ingest " + msg.id + ": " + e2);
+   }
+  } else {
+   markEmailsIngested([msg.id]);
+  }
+  return true;
+ }
+ function runSyncPages(query, maxPages, log) {
   let pageToken;
   let newEmails = 0;
   let skipped = 0;
   let page = 0;
+  let totalFetched = 0;
+  const s2 = getGmailSkillState();
+  const redact = !s2.config.showSensitiveMessages;
   do {
    page++;
-   log?.(`Fetching page ${page}...`, Math.min(5 + page * 8, 80));
-   const result = await fetchMessagePage(query, pageToken);
+   if (log)
+    log("Fetching message IDs (page " + page + ")...", Math.min(5 + page * 5, 40));
+   const result = fetchMessagePage(query, pageToken);
    if (result.messages.length === 0)
     break;
    pageToken = result.nextPageToken;
-   const CONCURRENCY = 5;
-   for (let i = 0; i < result.messages.length; i += CONCURRENCY) {
-    const batch = result.messages.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((msgRef) => syncMessage(msgRef.id)));
-    for (const wasNew of results) {
-     if (wasNew)
-      newEmails++;
-     else
-      skipped++;
+   const newIds = [];
+   for (const msgRef of result.messages) {
+    if (emailExists(msgRef.id)) {
+     skipped++;
+    } else {
+     newIds.push(msgRef.id);
     }
    }
-   log?.(`Page ${page}: ${newEmails} new, ${skipped} skipped`, Math.min(10 + page * 10, 90));
+   totalFetched += result.messages.length;
+   if (log)
+    log("Page " + page + ": " + newIds.length + " new, " + skipped + " skipped (total: " + totalFetched + ")", Math.min(10 + page * 8, 70));
+   for (let i = 0; i < newIds.length; i += BATCH_SIZE) {
+    const chunk = newIds.slice(i, i + BATCH_SIZE);
+    console.log("[gmail-sync] Batch fetching " + chunk.length + " messages...");
+    const messages = batchFetchMessages(chunk);
+    for (const msg of messages) {
+     if (syncAndIngestMessage(msg, redact)) {
+      s2.syncStatus.totalEmails++;
+      newEmails++;
+     }
+    }
+    publishSkillState();
+   }
+   if (log)
+    log("Page " + page + " done: " + newEmails + " synced, " + skipped + " skipped", Math.min(40 + page * 6, 85));
+   if (totalFetched >= MAX_EMAILS) {
+    console.log("[gmail-sync] Reached " + MAX_EMAILS + " email cap, stopping");
+    break;
+   }
   } while (pageToken && page < maxPages);
   return { newEmails, skipped };
  }
- async function performInitialSync(onProgress) {
+ function performInitialSync(onProgress) {
   const s2 = getGmailSkillState();
   if (!isGmailConnected()) {
    console.log("[gmail-sync] No credential, skipping initial sync");
@@ -6520,7 +7217,8 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   const log = (msg, pct) => {
    console.log(`[gmail-sync] [${pct}%] ${msg}`);
    emitSyncProgress(msg, pct);
-   onProgress?.(msg, pct);
+   if (onProgress)
+    onProgress(msg, pct);
   };
   s2.syncStatus.syncInProgress = true;
   s2.syncStatus.newEmailsCount = 0;
@@ -6529,7 +7227,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   try {
    const afterDate = gmailDateStr(SYNC_WINDOW_DAYS, true);
    log(`Starting initial sync (emails after ${afterDate})...`, 0);
-   const { newEmails, skipped } = await runSyncPages(`after:${afterDate}`, MAX_PAGES, log);
+   const { newEmails, skipped } = runSyncPages(`after:${afterDate} -in:spam -in:trash`, MAX_PAGES, log);
    const now = Date.now();
    state.set("initialSyncCompleted", true);
    state.set("lastSyncTime", now);
@@ -6550,11 +7248,21 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    s2.syncStatus.syncProgress = 0;
    s2.syncStatus.syncProgressMessage = "";
    publishSkillState();
-   const emails = getEmails();
+   const emails = getEmails().map((e2) => ({
+    id: e2.id,
+    subject: e2.subject,
+    sender_email: e2.sender_email,
+    sender_name: e2.sender_name,
+    date: e2.date,
+    // snippet omitted — raw text can break JSON transport
+    is_read: e2.is_read,
+    is_starred: e2.is_starred,
+    labels: e2.labels
+   }));
    state.setPartial({ emails });
   }
  }
- async function onSync() {
+ function onSync() {
   const s2 = getGmailSkillState();
   if (!isGmailConnected() || s2.syncStatus.syncInProgress)
    return;
@@ -6576,8 +7284,8 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    const lastSyncTime = getLastSyncTime();
    const thirtyDaysAgoMs = Date.now() - SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1e3;
    const effectiveMs = lastSyncTime ? Math.max(lastSyncTime, thirtyDaysAgoMs) : thirtyDaysAgoMs;
-   const query = `after:${gmailDateStr(effectiveMs)}`;
-   const { newEmails, skipped } = await runSyncPages(query, MAX_PAGES);
+   const query = `after:${gmailDateStr(effectiveMs)} -in:spam -in:trash`;
+   const { newEmails, skipped } = runSyncPages(query, MAX_PAGES);
    const now = Date.now();
    state.set("lastSyncTime", now);
    s2.syncStatus.lastSyncTime = now;
@@ -6599,22 +7307,34 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    s2.syncStatus.syncProgressMessage = "";
    publishSkillState();
    syncGmailMetadataToBackend();
-   const emails = getEmails();
+   const emails = getEmails().map((e2) => ({
+    id: e2.id,
+    subject: e2.subject,
+    sender_email: e2.sender_email,
+    sender_name: e2.sender_name,
+    date: e2.date,
+    // snippet omitted — raw text can break JSON transport
+    is_read: e2.is_read,
+    is_starred: e2.is_starred,
+    labels: e2.labels
+   }));
    state.setPartial({ emails });
   }
  }
  var INGEST_QUERY_LIMIT = 500;
+ var MIN_CONTENT_LENGTH = 50;
  function ingestNewEmails() {
-  markSensitiveAsSubmitted();
-  const emails = getUnsubmittedEmails(INGEST_QUERY_LIMIT);
+  markSensitiveAsIngested();
+  const emails = getUningestedEmails(INGEST_QUERY_LIMIT);
   if (emails.length === 0)
    return;
-  const submittedIds = [];
-  let ingested = 0;
+  emitSyncProgress(`Ingesting ${emails.length} emails into knowledge graph...`, 92);
+  const ingestedIds = [];
+  let ingestedCount = 0;
   for (const email of emails) {
-   const content = email.body_text || email.snippet || "";
-   if (content.length === 0) {
-    submittedIds.push(email.id);
+   const content = (email.body_text || email.snippet || "").trim();
+   if (content.length < MIN_CONTENT_LENGTH) {
+    ingestedIds.push(email.id);
     continue;
    }
    try {
@@ -6622,7 +7342,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      title: email.subject || `Email ${email.id}`,
      content,
      sourceType: "email",
-     documentId: `gmail-email-${email.id}`,
+     documentId: `${email.date || Date.now()}-gmail-email-${email.id}`,
      metadata: {
       source: "gmail",
       type: "email",
@@ -6640,16 +7360,16 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      createdAt: email.date ? email.date / 1e3 : void 0,
      updatedAt: email.updated_at ? email.updated_at / 1e3 : void 0
     });
-    submittedIds.push(email.id);
-    ingested++;
+    ingestedIds.push(email.id);
+    ingestedCount++;
    } catch (e2) {
     console.error(`[gmail] Failed to ingest email ${email.id}: ${e2}`);
    }
   }
-  if (submittedIds.length > 0)
-   markEmailsSubmitted(submittedIds);
-  if (ingested > 0) {
-   console.log(`[gmail] Ingested ${ingested} email(s) into knowledge graph`);
+  if (ingestedIds.length > 0)
+   markEmailsIngested(ingestedIds);
+  if (ingestedCount > 0) {
+   console.log(`[gmail] Ingested ${ingestedCount} email(s) into knowledge graph`);
   }
  }
  function isSyncCompleted() {
@@ -6776,7 +7496,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    },
    required: ["message_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const messageId = args.message_id;
     if (!messageId) {
@@ -6787,15 +7507,15 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     const localEmail = getEmailById(messageId);
     const params = [];
     params.push(`format=${encodeURIComponent(format)}`);
-    const response = await gmailFetch(`/users/me/messages/${messageId}?${params.join("&")}`);
+    const response = gmailFetch(`/users/me/messages/${messageId}?${params.join("&")}`);
     if (!response.success) {
      return JSON.stringify({
       success: false,
-      error: response.error?.message || "Failed to fetch email"
+      error: (response.error ? response.error.message : null) || "Failed to fetch email"
      });
     }
     const message = response.data;
-    const headers = message.payload?.headers || [];
+    const headers = message.payload && message.payload.headers || [];
     const result = {
      id: message.id,
      thread_id: message.threadId,
@@ -6823,8 +7543,8 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     const from = result.headers.from;
     const fromMatch = from.match(/(.+?)\s*<([^>]+)>/) || [null, from, from];
     result.sender = {
-     name: fromMatch[1]?.trim().replace(/^["']|["']$/g, "") || null,
-     email: fromMatch[2]?.trim() || from
+     name: (fromMatch[1] ? fromMatch[1].trim().replace(/^["']|["']$/g, "") : null) || null,
+     email: (fromMatch[2] ? fromMatch[2].trim() : null) || from
     };
     result.recipients = {
      to: parseEmailAddresses(result.headers.to),
@@ -6832,13 +7552,13 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      bcc: parseEmailAddresses(result.headers.bcc)
     };
     result.status = {
-     is_read: !message.labelIds?.includes("UNREAD"),
-     is_important: message.labelIds?.includes("IMPORTANT"),
-     is_starred: message.labelIds?.includes("STARRED"),
-     is_draft: message.labelIds?.includes("DRAFT"),
-     is_sent: message.labelIds?.includes("SENT"),
-     is_spam: message.labelIds?.includes("SPAM"),
-     is_trash: message.labelIds?.includes("TRASH")
+     is_read: !(message.labelIds && message.labelIds.includes("UNREAD")),
+     is_important: message.labelIds && message.labelIds.includes("IMPORTANT"),
+     is_starred: message.labelIds && message.labelIds.includes("STARRED"),
+     is_draft: message.labelIds && message.labelIds.includes("DRAFT"),
+     is_sent: message.labelIds && message.labelIds.includes("SENT"),
+     is_spam: message.labelIds && message.labelIds.includes("SPAM"),
+     is_trash: message.labelIds && message.labelIds.includes("TRASH")
     };
     if (includeBody && format === "full") {
      const bodyContent = extractEmailBodies(message.payload);
@@ -6855,9 +7575,9 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      };
     }
     const s2 = getGmailSkillState();
-    const showSensitive = s2.config.showSensitiveMessages ?? false;
+    const showSensitive = s2.config.showSensitiveMessages !== null && s2.config.showSensitiveMessages !== void 0 ? s2.config.showSensitiveMessages : false;
     if (!showSensitive) {
-     const textToCheck = (result.headers?.subject || "") + " " + (result.snippet || "");
+     const textToCheck = (result.headers && result.headers.subject || "") + " " + (result.snippet || "");
      if (isSensitiveText2(textToCheck)) {
       return JSON.stringify({
        success: true,
@@ -6890,15 +7610,15 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    if (!trimmed)
     return;
    const match = trimmed.match(/(.+?)\s*<([^>]+)>/) || [null, trimmed, trimmed];
-   const name2 = match[1]?.trim().replace(/^["']|["']$/g, "") || void 0;
-   const email = match[2]?.trim() || trimmed;
+   const name2 = (match[1] ? match[1].trim().replace(/^["']|["']$/g, "") : void 0) || void 0;
+   const email = (match[2] ? match[2].trim() : null) || trimmed;
    addresses.push({ email, name: name2 !== email ? name2 : void 0 });
   });
   return addresses;
  }
  function extractEmailBodies(payload) {
   const result = {};
-  if (payload.body?.data) {
+  if (payload.body && payload.body.data) {
    if (payload.mimeType === "text/plain") {
     result.text = atob(payload.body.data);
    } else if (payload.mimeType === "text/html") {
@@ -6907,7 +7627,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   }
   if (payload.parts) {
    for (const part of payload.parts) {
-    if (part.body?.data) {
+    if (part.body && part.body.data) {
      if (part.mimeType === "text/plain" && !result.text) {
       result.text = atob(part.body.data);
      } else if (part.mimeType === "text/html" && !result.html) {
@@ -6930,10 +7650,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   function processPayload(part) {
    if (part.filename && part.filename.length > 0) {
     attachments.push({
-     attachment_id: part.body?.attachmentId,
+     attachment_id: part.body ? part.body.attachmentId : void 0,
      filename: part.filename,
      mime_type: part.mimeType,
-     size: part.body?.size || 0,
+     size: (part.body ? part.body.size : 0) || 0,
      part_id: part.partId
     });
    }
@@ -6957,7 +7677,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     params.push(`labelIds=${encodeURIComponent(labelId)}`);
    });
   }
-  const maxResults = Math.min(parseInt(String(args.max_results ?? args.maxResults ?? 20), 10) || 20, 100);
+  const maxResults = Math.min(parseInt(String(args.max_results !== null && args.max_results !== void 0 ? args.max_results : args.maxResults !== null && args.maxResults !== void 0 ? args.maxResults : 20), 10) || 20, 100);
   params.push(`maxResults=${maxResults}`);
   if (args.include_spam_trash) {
    params.push("includeSpamTrash=true");
@@ -6968,23 +7688,26 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   return params;
  }
  function hasAttachments(message) {
-  if (message.payload?.body?.attachmentId)
+  if (message.payload && message.payload.body && message.payload.body.attachmentId)
    return true;
-  if (message.payload?.parts) {
-   return message.payload.parts.some((part) => part.body?.attachmentId || part.filename && part.filename.length > 0);
+  if (message.payload && message.payload.parts) {
+   return message.payload.parts.some((part) => part.body && part.body.attachmentId || part.filename && part.filename.length > 0);
   }
   return false;
  }
  function messageToEmailRow(message) {
-  const headers = message.payload?.headers || [];
-  const getHeader = (name2) => headers.find((h) => h.name.toLowerCase() === name2.toLowerCase())?.value || "";
+  const headers = message.payload && message.payload.headers || [];
+  const getHeader = (name2) => {
+   const found = headers.find((h) => h.name.toLowerCase() === name2.toLowerCase());
+   return (found ? found.value : "") || "";
+  };
   const subject = getHeader("Subject");
   const from = getHeader("From");
   const to = getHeader("To");
   const date = getHeader("Date");
   const fromMatch = from.match(/(.+?)\s*<([^>]+)>/) || [null, from, from];
-  const senderName = fromMatch[1]?.trim()?.replace(/^["']|["']$/g, "") || null;
-  const senderEmail = fromMatch[2]?.trim() || from;
+  const senderName = (fromMatch[1] ? fromMatch[1].trim().replace(/^["']|["']$/g, "") : null) || null;
+  const senderEmail = (fromMatch[2] ? fromMatch[2].trim() : null) || from;
   return {
    id: message.id,
    thread_id: message.threadId,
@@ -6994,9 +7717,9 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    date: date ? new Date(date).toISOString() : new Date(parseInt(message.internalDate, 10)).toISOString(),
    snippet: message.snippet,
    label_ids: message.labelIds || [],
-   is_read: !message.labelIds?.includes("UNREAD"),
-   is_important: message.labelIds?.includes("IMPORTANT"),
-   is_starred: message.labelIds?.includes("STARRED"),
+   is_read: !(message.labelIds && message.labelIds.includes("UNREAD")),
+   is_important: message.labelIds && message.labelIds.includes("IMPORTANT"),
+   is_starred: message.labelIds && message.labelIds.includes("STARRED"),
    has_attachments: hasAttachments(message),
    size_estimate: message.sizeEstimate || 0
   };
@@ -7041,14 +7764,14 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    },
    required: []
   },
-  async execute(args) {
+  execute(args) {
    const params = buildListParams(args);
    const listEndpoint = `/users/me/messages?${params.join("&")}`;
-   const listResponse = await gmailFetch(listEndpoint);
+   const listResponse = gmailFetch(listEndpoint);
    if (!listResponse.success) {
     return JSON.stringify({
      success: false,
-     error: listResponse.error?.message || "Failed to fetch email list"
+     error: (listResponse.error ? listResponse.error.message : null) || "Failed to fetch email list"
     });
    }
    const messageList = listResponse.data;
@@ -7056,7 +7779,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     return JSON.stringify({
      success: true,
      emails: [],
-     total_count: messageList.resultSizeEstimate ?? 0,
+     total_count: messageList.resultSizeEstimate !== null && messageList.resultSizeEstimate !== void 0 ? messageList.resultSizeEstimate : 0,
      next_page_token: messageList.nextPageToken || null,
      query: args.query || null,
      label_ids: args.label_ids || null
@@ -7067,10 +7790,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    const refs = messageList.messages;
    for (let i = 0; i < refs.length; i += CONCURRENCY) {
     const batch = refs.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((msgRef) => {
+    const results = batch.map((msgRef) => {
      const msgEndpoint = `/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`;
      return gmailFetch(msgEndpoint);
-    }));
+    });
     for (const msgResponse of results) {
      if (msgResponse.success && msgResponse.data) {
       const message = msgResponse.data;
@@ -7080,12 +7803,12 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     }
    }
    const s2 = getGmailSkillState();
-   const showSensitive = s2.config.showSensitiveMessages ?? false;
+   const showSensitive = s2.config.showSensitiveMessages !== null && s2.config.showSensitiveMessages !== void 0 ? s2.config.showSensitiveMessages : false;
    const filteredEmails = showSensitive ? emails : emails.filter((e2) => !isSensitiveText2((e2.subject || "") + " " + (e2.snippet || "")));
    return JSON.stringify({
     success: true,
     emails: filteredEmails,
-    total_count: messageList.resultSizeEstimate ?? 0,
+    total_count: messageList.resultSizeEstimate !== null && messageList.resultSizeEstimate !== void 0 ? messageList.resultSizeEstimate : 0,
     next_page_token: messageList.nextPageToken || null,
     query: args.query || null,
     label_ids: args.label_ids || null
@@ -7110,15 +7833,15 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    },
    required: []
   },
-  async execute(args) {
+  execute(args) {
    try {
     const typeFilter = args.type || "all";
     const includeHidden = args.include_hidden === true;
-    const response = await gmailFetch("/users/me/labels");
+    const response = gmailFetch("/users/me/labels");
     if (!response.success) {
      return JSON.stringify({
       success: false,
-      error: response.error?.message || "Failed to fetch labels"
+      error: (response.error ? response.error.message : null) || "Failed to fetch labels"
      });
     }
     const labelsData = response.data;
@@ -7172,23 +7895,14 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
  var getProfileTool = {
   name: "get-profile",
   description: "Get Gmail user profile information including email address, total message counts, and account details. Optional accessToken for frontend calls.",
-  input_schema: {
-   type: "object",
-   properties: {
-    accessToken: {
-     type: "string",
-     description: "Optional OAuth access token (e.g. from frontend)."
-    }
-   },
-   required: []
-  },
-  async execute(_args) {
+  input_schema: { type: "object", properties: {}, required: [] },
+  execute(_args) {
    try {
-    const response = await gmailFetch("/users/me/profile");
+    const response = gmailFetch("/users/me/profile");
     if (!response.success) {
      return JSON.stringify({
       success: false,
-      error: response.error?.message || "Failed to fetch profile"
+      error: (response.error ? response.error.message : null) || "Failed to fetch profile"
      });
     }
     const profile = response.data;
@@ -7256,7 +7970,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    },
    required: ["message_ids", "action"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const messageIds = args.message_ids;
     const action = args.action;
@@ -7276,7 +7990,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     for (const messageId of messageIds) {
      try {
       const requestBody = { ids: [messageId], ...labelOperations };
-      const response = await gmailFetch("/users/me/messages/batchModify", {
+      const response = gmailFetch("/users/me/messages/batchModify", {
        method: "POST",
        body: JSON.stringify(requestBody)
       });
@@ -7290,7 +8004,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
        results.push({
         message_id: messageId,
         success: false,
-        error: response.error?.message || "Failed to update message"
+        error: (response.error ? response.error.message : null) || "Failed to update message"
        });
        errors.push(messageId);
       }
@@ -7379,7 +8093,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    },
    required: ["query"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const query = args.query;
     if (!query) {
@@ -7395,11 +8109,11 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     if (args.page_token) {
      params.push(`pageToken=${encodeURIComponent(args.page_token)}`);
     }
-    const searchResponse = await gmailFetch(`/users/me/messages?${params.join("&")}`);
+    const searchResponse = gmailFetch(`/users/me/messages?${params.join("&")}`);
     if (!searchResponse.success || !searchResponse.data) {
      return JSON.stringify({
       success: false,
-      error: searchResponse.error?.message || "Search failed"
+      error: (searchResponse.error ? searchResponse.error.message : null) || "Search failed"
      });
     }
     const searchResults = searchResponse.data;
@@ -7417,19 +8131,19 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     const refs = searchResults.messages;
     for (let i = 0; i < refs.length; i += CONCURRENCY) {
      const batch = refs.slice(i, i + CONCURRENCY);
-     const results = await Promise.all(batch.map((msgRef) => gmailFetch(`/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`)));
+     const results = batch.map((msgRef) => gmailFetch(`/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`));
      for (const msgResponse of results) {
       if (msgResponse.success && msgResponse.data) {
        const message = msgResponse.data;
-       const headers = message.payload?.headers || [];
+       const headers = message.payload && message.payload.headers || [];
        const headerMap = {};
        headers.forEach((header) => {
         headerMap[header.name.toLowerCase()] = header.value;
        });
        const from = headerMap.from || "";
        const fromMatch = from.match(/(.+?)\s*<([^>]+)>/) || [null, from, from];
-       const senderName = fromMatch[1]?.trim().replace(/^["']|["']$/g, "") || null;
-       const senderEmail = fromMatch[2]?.trim() || from;
+       const senderName = (fromMatch[1] ? fromMatch[1].trim().replace(/^["']|["']$/g, "") : null) || null;
+       const senderEmail = (fromMatch[2] ? fromMatch[2].trim() : null) || from;
        emails.push({
         id: message.id,
         thread_id: message.threadId,
@@ -7441,9 +8155,9 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
         label_ids: message.labelIds || [],
         size_estimate: message.sizeEstimate || 0,
         status: {
-         is_read: !message.labelIds?.includes("UNREAD"),
-         is_important: message.labelIds?.includes("IMPORTANT"),
-         is_starred: message.labelIds?.includes("STARRED"),
+         is_read: !(message.labelIds && message.labelIds.includes("UNREAD")),
+         is_important: message.labelIds && message.labelIds.includes("IMPORTANT"),
+         is_starred: message.labelIds && message.labelIds.includes("STARRED"),
          has_attachments: hasAttachments2(message)
         },
         relevance_score: calculateRelevanceScore(message, query)
@@ -7453,7 +8167,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      }
     }
     const s2 = getGmailSkillState();
-    const showSensitive = s2.config.showSensitiveMessages ?? false;
+    const showSensitive = s2.config.showSensitiveMessages !== null && s2.config.showSensitiveMessages !== void 0 ? s2.config.showSensitiveMessages : false;
     const filteredEmails = showSensitive ? emails : emails.filter((e2) => !isSensitiveText2((e2.subject || "") + " " + (e2.snippet || "")));
     filteredEmails.sort((a, b) => b.relevance_score - a.relevance_score);
     return JSON.stringify({
@@ -7474,27 +8188,29 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   }
  };
  function hasAttachments2(message) {
-  if (message.payload?.body?.attachmentId)
+  if (message.payload && message.payload.body && message.payload.body.attachmentId)
    return true;
-  if (message.payload?.parts) {
-   return message.payload.parts.some((part) => part.body?.attachmentId || part.filename && part.filename.length > 0);
+  if (message.payload && message.payload.parts) {
+   return message.payload.parts.some((part) => part.body && part.body.attachmentId || part.filename && part.filename.length > 0);
   }
   return false;
  }
  function calculateRelevanceScore(message, query) {
   let score = 0;
   const queryLower = query.toLowerCase();
-  const subject = message.payload?.headers?.find((h) => h.name.toLowerCase() === "subject")?.value || "";
+  const payloadHeaders = message.payload && message.payload.headers || [];
+  const subjectHeader = payloadHeaders.find((h) => h.name.toLowerCase() === "subject");
+  const subject = (subjectHeader ? subjectHeader.value : "") || "";
   if (subject.toLowerCase().includes(queryLower)) {
    score += 10;
   }
-  if (message.snippet?.toLowerCase().includes(queryLower)) {
+  if (message.snippet && message.snippet.toLowerCase().includes(queryLower)) {
    score += 5;
   }
-  if (message.labelIds?.includes("UNREAD")) {
+  if (message.labelIds && message.labelIds.includes("UNREAD")) {
    score += 3;
   }
-  if (message.labelIds?.includes("IMPORTANT")) {
+  if (message.labelIds && message.labelIds.includes("IMPORTANT")) {
    score += 5;
   }
   const messageDate = new Date(parseInt(message.internalDate));
@@ -7589,7 +8305,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    },
    required: ["to", "subject"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const to = args.to;
     const subject = args.subject;
@@ -7608,7 +8324,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      });
     }
     const s2 = getGmailSkillState();
-    const fromEmail = s2.config.userEmail || s2.profile?.emailAddress;
+    const fromEmail = s2.config.userEmail || (s2.profile ? s2.profile.emailAddress : void 0);
     if (!fromEmail) {
      return JSON.stringify({
       success: false,
@@ -7617,19 +8333,20 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     }
     const boundary = `----gmail_boundary_${Date.now()}_${Math.random().toString(36)}`;
     let rawMessage = "";
-    rawMessage += `From: ${fromEmail}\r
+    const sanitizeHeader = (val) => val.replace(/[\r\n]/g, "");
+    rawMessage += `From: ${sanitizeHeader(fromEmail)}\r
 `;
-    rawMessage += `To: ${formatEmailAddresses(to)}\r
+    rawMessage += `To: ${sanitizeHeader(formatEmailAddresses(to))}\r
 `;
     if (args.cc && Array.isArray(args.cc) && args.cc.length > 0) {
-     rawMessage += `Cc: ${formatEmailAddresses(args.cc)}\r
+     rawMessage += `Cc: ${sanitizeHeader(formatEmailAddresses(args.cc))}\r
 `;
     }
     if (args.bcc && Array.isArray(args.bcc) && args.bcc.length > 0) {
-     rawMessage += `Bcc: ${formatEmailAddresses(args.bcc)}\r
+     rawMessage += `Bcc: ${sanitizeHeader(formatEmailAddresses(args.bcc))}\r
 `;
     }
-    rawMessage += `Subject: ${subject}\r
+    rawMessage += `Subject: ${sanitizeHeader(subject)}\r
 `;
     if (args.reply_to_message_id) {
      rawMessage += `In-Reply-To: <${args.reply_to_message_id}>\r
@@ -7705,31 +8422,31 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     if (args.thread_id) {
      requestBody.threadId = args.thread_id;
     }
-    const response = await gmailFetch("/users/me/messages/send", {
+    const response = gmailFetch("/users/me/messages/send", {
      method: "POST",
      body: JSON.stringify(requestBody)
     });
     if (!response.success) {
      return JSON.stringify({
       success: false,
-      error: response.error?.message || "Failed to send email"
+      error: (response.error ? response.error.message : null) || "Failed to send email"
      });
     }
     const sentMessage = response.data;
     if (sentMessage && sentMessage.id) {
-     const getEmailResponse = await gmailFetch(`/users/me/messages/${sentMessage.id}`);
+     const getEmailResponse = gmailFetch(`/users/me/messages/${sentMessage.id}`);
      if (getEmailResponse.success && getEmailResponse.data) {
       upsertEmail(getEmailResponse.data);
      }
     }
     return JSON.stringify({
      success: true,
-     message_id: sentMessage?.id ?? null,
-     thread_id: sentMessage?.threadId ?? null,
-     label_ids: sentMessage?.labelIds ?? [],
+     message_id: sentMessage ? sentMessage.id : null,
+     thread_id: sentMessage ? sentMessage.threadId : null,
+     label_ids: sentMessage ? sentMessage.labelIds || [] : [],
      to: formatEmailAddresses(to),
      subject,
-     size_estimate: sentMessage?.sizeEstimate || 0
+     size_estimate: (sentMessage ? sentMessage.sizeEstimate : 0) || 0
     });
    } catch (error) {
     return JSON.stringify({
@@ -7749,7 +8466,61 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
  }
 
  // skills-ts-out/core/gmail/tools/index.js
- var tools = [
+ function withLogging(tool) {
+  const originalExecute = tool.execute;
+  const toolName = tool.name;
+  return {
+   ...tool,
+   execute(args) {
+    const argKeys = Object.keys(args || {});
+    const SENSITIVE_KEYS = [
+     "to",
+     "cc",
+     "bcc",
+     "recipients",
+     "body",
+     "subject",
+     "query",
+     "search",
+     "content"
+    ];
+    const argSummary = argKeys.length > 0 ? argKeys.map((k) => {
+     const v = args[k];
+     if (SENSITIVE_KEYS.indexOf(k.toLowerCase()) >= 0)
+      return `${k}=<redacted>`;
+     if (typeof v === "string")
+      return `${k}=<${v.length} chars>`;
+     if (Array.isArray(v))
+      return `${k}=<array ${v.length}>`;
+     if (v && typeof v === "object")
+      return `${k}=<object>`;
+     return `${k}=${JSON.stringify(v)}`;
+    }).join(", ") : "(none)";
+    console.log(`[gmail][tool:${toolName}] called with ${argSummary}`);
+    const t0 = Date.now();
+    try {
+     const text = originalExecute.call(this, args);
+     const ms = Date.now() - t0;
+     const len = text ? text.length : 0;
+     let errMsg = "";
+     try {
+      const parsed = JSON.parse(text);
+      if (parsed.error)
+       errMsg = ` error="${String(parsed.error).slice(0, 100)}"`;
+     } catch {
+     }
+     console.log(`[gmail][tool:${toolName}] OK ${ms}ms (${len}b)${errMsg}`);
+     return text;
+    } catch (e2) {
+     const ms = Date.now() - t0;
+     const msg = e2 instanceof Error ? e2.message : String(e2);
+     console.error(`[gmail][tool:${toolName}] FAILED ${ms}ms: ${msg}`);
+     throw e2;
+    }
+   }
+  };
+ }
+ var rawTools = [
   getEmailTool,
   getEmailsTool,
   getLabelsTool,
@@ -7758,9 +8529,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   searchEmailsTool,
   sendEmailTool
  ];
+ var tools = rawTools.map(withLogging);
 
  // skills-ts-out/core/gmail/index.js
- async function init() {
+ function init() {
   console.log(`[gmail] Initializing on ${platform.os()}`);
   const s2 = getGmailSkillState();
   initializeGmailSchema();
@@ -7768,11 +8540,11 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   if (saved) {
    s2.config.credentialId = saved.credentialId || s2.config.credentialId;
    s2.config.userEmail = saved.userEmail || s2.config.userEmail;
-   s2.config.syncEnabled = saved.syncEnabled ?? s2.config.syncEnabled;
+   s2.config.syncEnabled = saved.syncEnabled != null ? saved.syncEnabled : s2.config.syncEnabled;
    s2.config.syncIntervalMinutes = saved.syncIntervalMinutes || s2.config.syncIntervalMinutes;
    s2.config.maxEmailsPerSync = saved.maxEmailsPerSync || s2.config.maxEmailsPerSync;
-   s2.config.notifyOnNewEmails = saved.notifyOnNewEmails ?? s2.config.notifyOnNewEmails;
-   s2.config.showSensitiveMessages = saved.showSensitiveMessages ?? s2.config.showSensitiveMessages;
+   s2.config.notifyOnNewEmails = saved.notifyOnNewEmails != null ? saved.notifyOnNewEmails : s2.config.notifyOnNewEmails;
+   s2.config.showSensitiveMessages = saved.showSensitiveMessages != null ? saved.showSensitiveMessages : s2.config.showSensitiveMessages;
   }
   const lastSync = state.get("lastSyncTime");
   const lastHistoryId = state.get("lastHistoryId");
@@ -7784,7 +8556,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   const isConnected = isGmailConnected();
   console.log(`[gmail] Initialized. Connected: ${isConnected}`);
  }
- async function start() {
+ function start() {
   console.log("[gmail] Starting skill...");
   const s2 = getGmailSkillState();
   if (isGmailConnected() && s2.config.syncEnabled) {
@@ -7795,21 +8567,21 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    console.log("[gmail] Not connected or sync disabled");
   }
  }
- async function stop() {
+ function stop() {
   console.log("[gmail] Skill stopped");
  }
- async function onCronTrigger(scheduleId) {
+ function onCronTrigger(scheduleId) {
   console.log(`[gmail] Cron triggered: ${scheduleId}`);
   if (scheduleId === "gmail-sync") {
-   await onSync();
+   onSync();
   }
  }
- async function onSessionStart(args) {
+ function onSessionStart(args) {
   const s2 = getGmailSkillState();
   s2.activeSessions.push(args.sessionId);
   console.log(`[gmail] Session started: ${args.sessionId} (${s2.activeSessions.length} active)`);
  }
- async function onSessionEnd(args) {
+ function onSessionEnd(args) {
   const s2 = getGmailSkillState();
   const index = s2.activeSessions.indexOf(args.sessionId);
   if (index > -1) {
@@ -7817,7 +8589,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   }
   console.log(`[gmail] Session ended: ${args.sessionId} (${s2.activeSessions.length} active)`);
  }
- async function onOAuthComplete(args) {
+ function onOAuthComplete(args) {
   console.log(`[gmail] OAuth complete for provider: ${args.provider}`);
   const s2 = getGmailSkillState();
   s2.config.credentialId = args.credentialId;
@@ -7827,7 +8599,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   state.set("config", s2.config);
   publishSkillState2();
  }
- async function onOAuthRevoked(args) {
+ function onOAuthRevoked(args) {
   console.log(`[gmail] OAuth revoked: ${args.reason}`);
   const s2 = getGmailSkillState();
   s2.config.credentialId = "";
@@ -7840,7 +8612,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    platform.notify("Gmail Disconnected", "Your Gmail connection has expired. Please reconnect.");
   }
  }
- async function onDisconnect() {
+ function onDisconnect() {
   console.log("[gmail] Disconnecting...");
   const s2 = getGmailSkillState();
   oauth.revoke();
@@ -7858,7 +8630,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   publishSkillState2();
   console.log("[gmail] Disconnected and cleaned up");
  }
- async function onAuthComplete(args) {
+ function onAuthComplete(args) {
   console.log(`[gmail] onAuthComplete \u2014 mode: ${args.mode}`);
   const s2 = getGmailSkillState();
   if (args.mode === "managed") {
@@ -7877,7 +8649,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    }
    try {
     const body = `client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&refresh_token=${encodeURIComponent(refreshToken)}&grant_type=refresh_token`;
-    const response = await net.fetch("https://oauth2.googleapis.com/token", {
+    const response = net.fetch("https://oauth2.googleapis.com/token", {
      method: "POST",
      headers: { "Content-Type": "application/x-www-form-urlencoded" },
      body,
@@ -7894,7 +8666,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      return { status: "error", errors: [{ field: "refresh_token", message: errorMsg }] };
     }
     const tokenData = JSON.parse(response.body);
-    const profileResp = await net.fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+    const profileResp = net.fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
      method: "GET",
      headers: {
       Authorization: `Bearer ${tokenData.access_token}`,
@@ -7928,7 +8700,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    }
   }
   if (args.mode === "text") {
-   const content = args.credentials.content ?? "";
+   const content = args.credentials.content || "";
    if (!content.trim()) {
     return {
      status: "error",
@@ -7954,7 +8726,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    } catch {
    }
    try {
-    const profileResp = await net.fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+    const profileResp = net.fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
      method: "GET",
      headers: { Authorization: `Bearer ${token2}`, "Content-Type": "application/json" },
      timeout: 10
@@ -7999,7 +8771,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   publishSkillState2();
   return { status: "complete", message: "Connected to Gmail!" };
  }
- async function onAuthRevoked(args) {
+ function onAuthRevoked(args) {
   console.log(`[gmail] Auth revoked \u2014 mode: ${args.mode || "unknown"}`);
   const s2 = getGmailSkillState();
   s2.config.credentialId = "";
@@ -8010,7 +8782,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
   resetTokenCache();
   publishSkillState2();
  }
- async function onSetupStart() {
+ function onSetupStart() {
   return {
    step: {
     id: "auth_done",
@@ -8020,10 +8792,10 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
    }
   };
  }
- async function onSetupSubmit(_args) {
+ function onSetupSubmit(_args) {
   return { status: "complete" };
  }
- async function onListOptions() {
+ function onListOptions() {
   const s2 = getGmailSkillState();
   return {
    options: [
@@ -8067,12 +8839,12 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
      name: "showSensitiveMessages",
      type: "boolean",
      label: "Show Sensitive Messages",
-     value: s2.config.showSensitiveMessages ?? false
+     value: s2.config.showSensitiveMessages || false
     }
    ]
   };
  }
- async function onSetOption(args) {
+ function onSetOption(args) {
   const s2 = getGmailSkillState();
   const connected = isGmailConnected();
   switch (args.name) {
@@ -8094,7 +8866,7 @@ ${"".padEnd(offset)}${"^".repeat(len)}`;
     }
     break;
    case "maxEmailsPerSync":
-    s2.config.maxEmailsPerSync = parseInt(args.value, 100);
+    s2.config.maxEmailsPerSync = parseInt(args.value, 10);
     break;
    case "notifyOnNewEmails":
     s2.config.notifyOnNewEmails = Boolean(args.value);

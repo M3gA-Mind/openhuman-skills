@@ -123,12 +123,12 @@ var __skill_bundle = (() => {
    if (typeof data === "bigint" || data && typeof data === "object" && typeof data.toJSNumber === "function") {
     let bigVal = typeof data === "bigint" ? data : data.value;
     if (typeof bigVal !== "bigint") bigVal = BigInt(data.valueOf());
-    const isNegative = bigVal < 0n;
+    const isNegative = bigVal < /* @__PURE__ */ BigInt("0");
     if (isNegative) bigVal = -bigVal;
     const bytes = [];
-    while (bigVal > 0n) {
-     bytes.push(Number(bigVal & 0xffn));
-     bigVal >>= 8n;
+    while (bigVal > /* @__PURE__ */ BigInt("0")) {
+     bytes.push(Number(bigVal & /* @__PURE__ */ BigInt("0xff")));
+     bigVal >>= /* @__PURE__ */ BigInt("8");
     }
     if (bytes.length === 0) bytes.push(0);
     if (isNegative) {
@@ -369,22 +369,22 @@ var __skill_bundle = (() => {
   readBigInt64LE(offset = 0) {
    const lo = this.readUInt32LE(offset);
    const hi = this.readInt32LE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readBigInt64BE(offset = 0) {
    const hi = this.readInt32BE(offset);
    const lo = this.readUInt32BE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readBigUInt64LE(offset = 0) {
    const lo = this.readUInt32LE(offset);
    const hi = this.readUInt32LE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readBigUInt64BE(offset = 0) {
    const hi = this.readUInt32BE(offset);
    const lo = this.readUInt32BE(offset + 4);
-   return BigInt(lo) | BigInt(hi) << 32n;
+   return BigInt(lo) | BigInt(hi) << /* @__PURE__ */ BigInt("32");
   }
   readFloatLE(offset = 0) {
    const view = new DataView(this.buffer, this.byteOffset + offset, 4);
@@ -461,29 +461,29 @@ var __skill_bundle = (() => {
    return offset + 4;
   }
   writeBigInt64LE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeUInt32LE(lo, offset);
    this.writeInt32LE(hi, offset + 4);
    return offset + 8;
   }
   writeBigInt64BE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeInt32BE(hi, offset);
    this.writeUInt32BE(lo, offset + 4);
    return offset + 8;
   }
   writeBigUInt64LE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeUInt32LE(lo, offset);
    this.writeUInt32LE(hi, offset + 4);
    return offset + 8;
   }
   writeBigUInt64BE(value, offset = 0) {
-   const lo = Number(value & 0xffffffffn);
-   const hi = Number(value >> 32n & 0xffffffffn);
+   const lo = Number(value & /* @__PURE__ */ BigInt("0xffffffff"));
+   const hi = Number(value >> /* @__PURE__ */ BigInt("32") & /* @__PURE__ */ BigInt("0xffffffff"));
    this.writeUInt32BE(hi, offset);
    this.writeUInt32BE(lo, offset + 4);
    return offset + 8;
@@ -575,17 +575,17 @@ var __skill_bundle = (() => {
  var MAX_RETRIES = 3;
  var DEFAULT_BACKOFF_MS = 5e3;
  var CLOUDFLARE_RETRYABLE = /* @__PURE__ */ new Set([520, 521, 522, 523, 524, 525, 526, 527]);
- var LEGACY_API_VERSION = "2022-06-28";
- var CURRENT_API_VERSION = "2025-09-03";
- var cachedApiVersion = null;
+ var NOTION_API_VERSION = "2026-03-11";
  function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+  }
  }
  function getNotionAuth() {
   const authCred = auth.getCredential();
   if (authCred && authCred.mode !== "managed") {
    const creds = authCred.credentials;
-   const token = creds.api_token ?? creds.content ?? creds.access_token;
+   const token = creds.api_token || creds.content || creds.access_token;
    if (token) {
     return { type: "token", token };
    }
@@ -602,18 +602,20 @@ var __skill_bundle = (() => {
  function isNotionConnected() {
   return getNotionAuth() !== null;
  }
- async function notionFetch(endpoint, options = {}) {
+ function notionFetch(endpoint, options = {}) {
   const notionAuth = getNotionAuth();
   if (!notionAuth)
    throw new Error("Notion not connected. Please complete setup first.");
   const method = options.method || "GET";
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const apiVersion = options.apiVersion || await detectApiVersion();
+  const apiVersion = NOTION_API_VERSION;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
    let response;
+   const t0 = Date.now();
    if (notionAuth.type === "token") {
     const url = `https://api.notion.com/v1${path}`;
-    response = await net.fetch(url, {
+    console.log(`[notion][fetch] ${method} ${url} (direct, attempt ${attempt})`);
+    response = net.fetch(url, {
      method,
      headers: {
       Authorization: `Bearer ${notionAuth.token}`,
@@ -624,36 +626,33 @@ var __skill_bundle = (() => {
      timeout: 30
     });
    } else {
-    response = await oauth.fetch(`/v1${path}`, {
+    console.log(`[notion][fetch] ${method} /v1${path} (proxy, attempt ${attempt})`);
+    response = oauth.fetch(`/v1${path}`, {
      method,
-     headers: { "Content-Type": "application/json" },
+     headers: { "Content-Type": "application/json", "Notion-Version": apiVersion },
      body: options.body ? JSON.stringify(options.body) : void 0,
      timeout: 30
     });
    }
+   const elapsed = Date.now() - t0;
+   const bodyLen = response.body ? response.body.length : 0;
+   console.log(`[notion][fetch] ${method} ${path} status=${response.status} (${elapsed}ms, ${bodyLen}b)`);
    if (response.status === 429 && attempt < MAX_RETRIES) {
     const retryAfter = response.headers["retry-after"];
     const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1e3 : DEFAULT_BACKOFF_MS * (attempt + 1);
     console.warn(`[notion][helpers] 429 rate-limited \u2014 waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-    await sleep(waitMs);
+    sleep(waitMs);
     continue;
    }
    if (CLOUDFLARE_RETRYABLE.has(response.status) && attempt < MAX_RETRIES) {
     const waitMs = DEFAULT_BACKOFF_MS * Math.pow(2, attempt);
     console.warn(`[notion][helpers] Cloudflare ${response.status} (transient) \u2014 waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-    await sleep(waitMs);
+    sleep(waitMs);
     continue;
    }
    if (response.status >= 400) {
-    const errorBody = response.body;
-    let message = `Notion API error: ${response.status}`;
-    try {
-     const parsed2 = JSON.parse(errorBody);
-     if (parsed2.message) {
-      message = parsed2.message;
-     }
-    } catch {
-    }
+    const errorBody = response.body || "";
+    let message = `Notion API error: ${response.status} \u2014 ${errorBody.slice(0, 300)}`;
     console.error("[notion][helpers] notionFetch error body:", errorBody);
     throw new Error(message);
    }
@@ -720,7 +719,7 @@ var __skill_bundle = (() => {
    created_time: page.created_time,
    last_edited_time: page.last_edited_time,
    archived: page.archived,
-   parent_type: page.parent?.type
+   parent_type: page.parent ? page.parent.type : void 0
   };
  }
  function formatDatabaseSummary(db2) {
@@ -764,9 +763,9 @@ var __skill_bundle = (() => {
   let userType = user.type;
   if (userType === "bot") {
    const bot = user.bot;
-   const owner = bot?.owner;
-   const ownerUser = owner?.user;
-   const ownerPerson = ownerUser?.person;
+   const owner = bot ? bot.owner : void 0;
+   const ownerUser = owner ? owner.user : void 0;
+   const ownerPerson = ownerUser ? ownerUser.person : void 0;
    if (ownerUser) {
     id = ownerUser.id || id;
     name = ownerUser.name || name;
@@ -778,14 +777,14 @@ var __skill_bundle = (() => {
    }
   } else {
    const person = user.person;
-   email = person?.email || user.email;
+   email = (person ? person.email : void 0) || user.email;
   }
   return {
    id,
-   name: name ?? null,
-   email: email ?? null,
-   type: userType ?? null,
-   avatar_url: avatarUrl ?? null
+   name: name !== null && name !== void 0 ? name : null,
+   email: email !== null && email !== void 0 ? email : null,
+   type: userType !== null && userType !== void 0 ? userType : null,
+   avatar_url: avatarUrl !== null && avatarUrl !== void 0 ? avatarUrl : null
   };
  }
  function buildRichText(text) {
@@ -794,7 +793,7 @@ var __skill_bundle = (() => {
  function buildParagraphBlock(text) {
   return { type: "paragraph", paragraph: { rich_text: buildRichText(text) } };
  }
- async function fetchBlockTreeText(blockId, maxDepth = 2) {
+ function fetchBlockTreeText(blockId, maxDepth = 2) {
   if (maxDepth < 0)
    return "";
   const lines = [];
@@ -804,7 +803,7 @@ var __skill_bundle = (() => {
    const endpoint = `/blocks/${blockId}/children?page_size=100${startCursor ? `&start_cursor=${startCursor}` : ""}`;
    let result;
    try {
-    result = await notionFetch(endpoint);
+    result = notionFetch(endpoint);
    } catch {
     break;
    }
@@ -818,7 +817,7 @@ var __skill_bundle = (() => {
       lines.push(cleaned);
     }
     if (block.has_children && maxDepth > 0) {
-     const childText = await fetchBlockTreeText(block.id, maxDepth - 1);
+     const childText = fetchBlockTreeText(block.id, maxDepth - 1);
      if (childText)
       lines.push(childText);
     }
@@ -828,85 +827,28 @@ var __skill_bundle = (() => {
   }
   return lines.join("\n");
  }
- async function detectApiVersion() {
-  if (cachedApiVersion) {
-   return cachedApiVersion;
-  }
-  const notionAuth = getNotionAuth();
-  if (!notionAuth) {
-   cachedApiVersion = LEGACY_API_VERSION;
-   return cachedApiVersion;
-  }
+ function resolveDataSourceId(databaseId) {
   try {
-   let response;
-   if (notionAuth.type === "token") {
-    response = await net.fetch("https://api.notion.com/v1/users?page_size=1", {
-     method: "GET",
-     headers: {
-      Authorization: `Bearer ${notionAuth.token}`,
-      "Content-Type": "application/json",
-      "Notion-Version": CURRENT_API_VERSION
-     },
-     timeout: 10
-    });
-   } else {
-    response = await oauth.fetch("/v1/users?page_size=1", {
-     method: "GET",
-     headers: { "Content-Type": "application/json", "Notion-Version": CURRENT_API_VERSION },
-     timeout: 10
-    });
-   }
-   if (response.status < 400) {
-    cachedApiVersion = CURRENT_API_VERSION;
-    console.log(`[notion][helpers] Using API version: ${CURRENT_API_VERSION}`);
-   } else {
-    cachedApiVersion = LEGACY_API_VERSION;
-    console.log(`[notion][helpers] Falling back to API version: ${LEGACY_API_VERSION}`);
-   }
-  } catch (error) {
-   cachedApiVersion = LEGACY_API_VERSION;
-   console.log(`[notion][helpers] Error detecting API version, using legacy: ${LEGACY_API_VERSION}`, error);
-  }
-  return cachedApiVersion;
- }
- function resetApiVersionCache() {
-  cachedApiVersion = null;
- }
- async function resolveDataSourceId(databaseId) {
-  const apiVersion = await detectApiVersion();
-  if (apiVersion === LEGACY_API_VERSION) {
-   return databaseId;
-  }
-  try {
-   const response = await notionFetch(`/databases/${databaseId}`, { apiVersion });
+   const response = notionFetch(`/databases/${databaseId}`);
    if (response.data_sources && response.data_sources.length > 0) {
     const dataSourceId = response.data_sources[0].id;
     console.log(`[notion][helpers] Resolved database ${databaseId} to data source ${dataSourceId}`);
     return dataSourceId;
    }
-   console.log(`[notion][helpers] No data sources found for database ${databaseId}, using original ID`);
    return databaseId;
   } catch (error) {
    console.log(`[notion][helpers] Error resolving data source for ${databaseId}, using original ID:`, error);
    return databaseId;
   }
  }
- async function getQueryEndpoint(databaseId) {
-  const apiVersion = await detectApiVersion();
-  if (apiVersion === LEGACY_API_VERSION) {
-   return `/databases/${databaseId}/query`;
-  }
-  const dataSourceId = await resolveDataSourceId(databaseId);
+ function getQueryEndpoint(databaseId) {
+  const dataSourceId = resolveDataSourceId(databaseId);
   return `/data_sources/${dataSourceId}/query`;
- }
- async function supportsMultiSourceDatabases() {
-  const apiVersion = await detectApiVersion();
-  return apiVersion === CURRENT_API_VERSION;
  }
 
  // skills-ts-out/core/notion/api/client.js
- async function apiFetch(endpoint, options) {
-  return await notionFetch(endpoint, options);
+ function apiFetch(endpoint, options) {
+  return notionFetch(endpoint, options);
  }
 
  // skills-ts-out/core/notion/api/blocks.js
@@ -941,9 +883,9 @@ var __skill_bundle = (() => {
  function getDatabase(databaseId) {
   return apiFetch(`/databases/${databaseId}`);
  }
- async function resolveDataSourceIdCompat(databaseId) {
+ function resolveDataSourceIdCompat(databaseId) {
   try {
-   return await resolveDataSourceId(databaseId);
+   return resolveDataSourceId(databaseId);
   } catch (error) {
    throw new Error(`Database has no data sources or is not accessible. Share the database with your integration. ${formatApiError(error)}`);
   }
@@ -951,67 +893,24 @@ var __skill_bundle = (() => {
  function getDataSource(dataSourceId) {
   return apiFetch(`/data_sources/${dataSourceId}`);
  }
- async function queryDataSource(databaseId, body) {
-  const apiVersion = await detectApiVersion();
+ function queryDataSource(databaseId, body) {
+  const endpoint = getQueryEndpoint(databaseId);
   const requestBody = body || {};
-  try {
-   const endpoint = await getQueryEndpoint(databaseId);
-   console.log(`[notion][databases] Querying ${endpoint} with API version ${apiVersion}`);
-   return await apiFetch(endpoint, {
-    method: "POST",
-    body: requestBody,
-    apiVersion
-   });
-  } catch (error) {
-   const errorMessage = String(error);
-   if (apiVersion !== "2022-06-28" && (errorMessage.includes("invalid_version") || errorMessage.includes("data_source") || errorMessage.includes("404"))) {
-    console.log(`[notion][databases] New API failed, attempting legacy fallback for database ${databaseId}`);
-    try {
-     return await apiFetch(`/databases/${databaseId}/query`, {
-      method: "POST",
-      body: requestBody,
-      apiVersion: "2022-06-28"
-     });
-    } catch (fallbackError) {
-     console.error(`[notion][databases] Legacy fallback also failed:`, fallbackError);
-     throw new Error(`Failed to query database with both new and legacy APIs: ${formatApiError(fallbackError)}`);
-    }
-   }
-   throw error;
-  }
+  console.log(`[notion][databases] Querying ${endpoint}`);
+  return apiFetch(endpoint, { method: "POST", body: requestBody });
  }
- async function createDatabase(body) {
-  const apiVersion = await detectApiVersion();
-  return apiFetch("/databases", { method: "POST", body, apiVersion });
+ function createDatabase(body) {
+  return apiFetch("/databases", { method: "POST", body });
  }
- async function updateDatabase(databaseId, body) {
-  const apiVersion = await detectApiVersion();
-  return apiFetch(`/databases/${databaseId}`, {
-   method: "PATCH",
-   body,
-   apiVersion
+ function updateDatabase(databaseId, body) {
+  return apiFetch(`/databases/${databaseId}`, { method: "PATCH", body });
+ }
+ function listAllDatabases(pageSize = 20) {
+  const filter = { property: "object", value: "data_source" };
+  return apiFetch("/search", {
+   method: "POST",
+   body: { filter, page_size: pageSize }
   });
- }
- async function listAllDatabases(pageSize = 20) {
-  const apiVersion = await detectApiVersion();
-  const filter = apiVersion === "2025-09-03" ? { property: "object", value: "data_source" } : { property: "object", value: "database" };
-  try {
-   return await apiFetch("/search", {
-    method: "POST",
-    body: { filter, page_size: pageSize },
-    apiVersion
-   });
-  } catch (error) {
-   if (apiVersion !== "2022-06-28") {
-    console.log(`[notion][databases] New API search failed, trying legacy database search`);
-    return await apiFetch("/search", {
-     method: "POST",
-     body: { filter: { property: "object", value: "database" }, page_size: pageSize },
-     apiVersion: "2022-06-28"
-    });
-   }
-   throw error;
-  }
  }
 
  // skills-ts-out/core/notion/api/pages.js
@@ -1090,7 +989,7 @@ var __skill_bundle = (() => {
     workspaceName: "",
     syncIntervalMinutes: 20,
     contentSyncEnabled: true,
-    maxPagesPerContentSync: 50
+    maxPagesPerContentSync: 500
    },
    syncStatus: {
     syncInProgress: false,
@@ -1104,7 +1003,10 @@ var __skill_bundle = (() => {
     summariesTotal: 0,
     summariesPending: 0,
     lastSyncError: null,
-    lastSyncDurationMs: 0
+    lastSyncDurationMs: 0,
+    syncPhase: null,
+    syncProgress: 0,
+    syncMessage: null
    },
    activeSessions: []
   };
@@ -1136,10 +1038,14 @@ var __skill_bundle = (() => {
   const iconObj = icon;
   if (iconObj.type === "emoji")
    return iconObj.emoji;
-  if (iconObj.type === "external")
-   return iconObj.external?.url || null;
-  if (iconObj.type === "file")
-   return iconObj.file?.url || null;
+  if (iconObj.type === "external") {
+   const ext = iconObj.external;
+   return (ext ? ext.url : null) || null;
+  }
+  if (iconObj.type === "file") {
+   const file = iconObj.file;
+   return (file ? file.url : null) || null;
+  }
   return null;
  }
  function extractParent(parent) {
@@ -1165,11 +1071,11 @@ var __skill_bundle = (() => {
    entities.push({ id, type, name: name || void 0, role, property });
   };
   const createdBy = page.created_by;
-  if (createdBy?.id) {
+  if (createdBy && createdBy.id) {
    add(createdBy.id, "person", createdBy.name, "creator");
   }
   const lastEditedBy = page.last_edited_by;
-  if (lastEditedBy?.id) {
+  if (lastEditedBy && lastEditedBy.id) {
    add(lastEditedBy.id, "person", lastEditedBy.name, "last_editor");
   }
   const props = page.properties;
@@ -1245,7 +1151,7 @@ var __skill_bundle = (() => {
    last_edited_time = excluded.last_edited_time,
    archived = excluded.archived,
    page_entities = excluded.page_entities,
-   backend_submitted = 0,
+   ingested = 0,
    synced_at = excluded.synced_at`, [
    page.id,
    cid,
@@ -1254,8 +1160,8 @@ var __skill_bundle = (() => {
    iconStr,
    parent.type,
    parent.id,
-   createdBy?.id || null,
-   lastEditedBy?.id || null,
+   (createdBy ? createdBy.id : null) || null,
+   (lastEditedBy ? lastEditedBy.id : null) || null,
    page.created_time,
    page.last_edited_time,
    page.archived ? 1 : 0,
@@ -1265,7 +1171,7 @@ var __skill_bundle = (() => {
  }
  function updatePageContent(pageId, contentText) {
   const cid = credId();
-  db.exec("UPDATE pages SET content_text = ?, content_synced_at = ?, backend_submitted = 0 WHERE credential_id = ? AND id = ?", [contentText, Date.now(), cid, pageId]);
+  db.exec("UPDATE pages SET content_text = ?, content_synced_at = ?, ingested = 0 WHERE credential_id = ? AND id = ?", [contentText, Date.now(), cid, pageId]);
  }
  function getPageById(pageId) {
   const cid = credId();
@@ -1289,22 +1195,6 @@ var __skill_bundle = (() => {
   sql += " ORDER BY last_edited_time DESC";
   const limit = options.limit || 50;
   sql += " LIMIT ?";
-  params.push(limit);
-  return db.all(sql, params);
- }
- function getPagesNeedingContent(limit, updatedAfterIso) {
-  const cid = credId();
-  const lastEditedMsExpr = `(strftime('%s', substr(last_edited_time, 1, 10) || ' ' || substr(last_edited_time, 12, 8)) * 1000)`;
-  let sql = `SELECT * FROM pages
-  WHERE credential_id = ?
-   AND archived = 0
-   AND (content_synced_at IS NULL OR content_synced_at < ${lastEditedMsExpr})`;
-  const params = [cid];
-  if (updatedAfterIso) {
-   sql += " AND last_edited_time >= ?";
-   params.push(updatedAfterIso);
-  }
-  sql += " ORDER BY last_edited_time DESC LIMIT ?";
   params.push(limit);
   return db.all(sql, params);
  }
@@ -1344,7 +1234,7 @@ var __skill_bundle = (() => {
    created_time = excluded.created_time,
    last_edited_time = excluded.last_edited_time,
    archived = excluded.archived,
-   backend_submitted = 0,
+   ingested = 0,
    synced_at = excluded.synced_at`, [
    database.id,
    cid,
@@ -1366,6 +1256,194 @@ var __skill_bundle = (() => {
    databaseId
   ]);
  }
+ function getLocalDatabases(options = {}) {
+  const cid = credId();
+  let sql = "SELECT * FROM databases WHERE credential_id = ? AND archived = 0";
+  const params = [cid];
+  if (options.query) {
+   sql += " AND (title LIKE ? OR description LIKE ?)";
+   const term = `%${options.query}%`;
+   params.push(term, term);
+  }
+  sql += " ORDER BY last_edited_time DESC";
+  const limit = options.limit || 50;
+  sql += " LIMIT ?";
+  params.push(limit);
+  return db.all(sql, params);
+ }
+ function extractPropertiesText(properties) {
+  const parts = [];
+  for (const [, propVal] of Object.entries(properties)) {
+   const prop = propVal;
+   const propType = prop.type;
+   switch (propType) {
+    case "title":
+    case "rich_text": {
+     const texts = prop[propType];
+     if (Array.isArray(texts)) {
+      const t = texts.map((rt) => rt.plain_text || "").join("");
+      if (t)
+       parts.push(t);
+     }
+     break;
+    }
+    case "number": {
+     const num = prop.number;
+     if (num != null)
+      parts.push(String(num));
+     break;
+    }
+    case "select": {
+     const sel = prop.select;
+     if (sel && sel.name)
+      parts.push(sel.name);
+     break;
+    }
+    case "multi_select": {
+     const ms = prop.multi_select;
+     if (Array.isArray(ms)) {
+      for (const item of ms) {
+       if (item.name)
+        parts.push(item.name);
+      }
+     }
+     break;
+    }
+    case "status": {
+     const st = prop.status;
+     if (st && st.name)
+      parts.push(st.name);
+     break;
+    }
+    case "date": {
+     const dt = prop.date;
+     if (dt && dt.start)
+      parts.push(dt.start);
+     if (dt && dt.end)
+      parts.push(dt.end);
+     break;
+    }
+    case "email": {
+     const email = prop.email;
+     if (email)
+      parts.push(email);
+     break;
+    }
+    case "phone_number": {
+     const phone = prop.phone_number;
+     if (phone)
+      parts.push(phone);
+     break;
+    }
+    case "url": {
+     const url = prop.url;
+     if (url)
+      parts.push(url);
+     break;
+    }
+    case "checkbox": {
+     parts.push(prop.checkbox ? "true" : "false");
+     break;
+    }
+    case "people": {
+     const people = prop.people;
+     if (Array.isArray(people)) {
+      for (const person of people) {
+       if (person.name)
+        parts.push(person.name);
+      }
+     }
+     break;
+    }
+    case "formula": {
+     const formula = prop.formula;
+     if (formula) {
+      const fType = formula.type;
+      const val = formula[fType];
+      if (val != null)
+       parts.push(String(val));
+     }
+     break;
+    }
+    case "rollup": {
+     const rollup = prop.rollup;
+     if (rollup) {
+      const rType = rollup.type;
+      const val = rollup[rType];
+      if (val != null && !Array.isArray(val))
+       parts.push(String(val));
+     }
+     break;
+    }
+   }
+  }
+  return parts.join(" ");
+ }
+ function upsertDatabaseRow(row, databaseId) {
+  const cid = credId();
+  const now = Date.now();
+  let title = row.id;
+  const props = row.properties;
+  if (props) {
+   for (const key of Object.keys(props)) {
+    const prop = props[key];
+    if (prop.type === "title" && Array.isArray(prop.title)) {
+     const texts = prop.title;
+     const t = texts.map((rt) => rt.plain_text || "").join("");
+     if (t) {
+      title = t;
+      break;
+     }
+    }
+   }
+  }
+  const iconStr = extractIcon(row.icon);
+  const createdBy = row.created_by;
+  const lastEditedBy = row.last_edited_by;
+  const propertiesJson = props ? JSON.stringify(props) : null;
+  const propertiesText = props ? extractPropertiesText(props) : null;
+  db.exec(`INSERT INTO database_rows (
+   id, credential_id, database_id, title, url, icon, properties_json, properties_text,
+   created_by_id, last_edited_by_id,
+   created_time, last_edited_time, archived, synced_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(credential_id, id) DO UPDATE SET
+   database_id = excluded.database_id,
+   title = excluded.title,
+   url = excluded.url,
+   icon = excluded.icon,
+   properties_json = excluded.properties_json,
+   properties_text = excluded.properties_text,
+   created_by_id = excluded.created_by_id,
+   last_edited_by_id = excluded.last_edited_by_id,
+   created_time = excluded.created_time,
+   last_edited_time = excluded.last_edited_time,
+   archived = excluded.archived,
+   ingested = 0,
+   synced_at = excluded.synced_at`, [
+   row.id,
+   cid,
+   databaseId,
+   title,
+   row.url || null,
+   iconStr,
+   propertiesJson,
+   propertiesText,
+   (createdBy ? createdBy.id : null) || null,
+   (lastEditedBy ? lastEditedBy.id : null) || null,
+   row.created_time,
+   row.last_edited_time,
+   row.archived ? 1 : 0,
+   now
+  ]);
+ }
+ function getDatabaseRowById(rowId) {
+  const cid = credId();
+  return db.get("SELECT * FROM database_rows WHERE credential_id = ? AND id = ?", [
+   cid,
+   rowId
+  ]);
+ }
  function upsertUser(user) {
   const cid = credId();
   const now = Date.now();
@@ -1377,51 +1455,60 @@ var __skill_bundle = (() => {
    cid,
    user.name || "(Unknown)",
    user.type || "person",
-   person?.email || null,
+   (person ? person.email : null) || null,
    user.avatar_url || null,
    now
   ]);
  }
- function getUnsubmittedPages(limit = 500) {
+ function getLocalUsers() {
+  const cid = credId();
+  return db.all("SELECT * FROM users WHERE credential_id = ? ORDER BY name", [
+   cid
+  ]);
+ }
+ function getUningestedPages(limit = 500) {
   const cid = credId();
   return db.all(`SELECT * FROM pages
-  WHERE credential_id = ? AND backend_submitted = 0 AND archived = 0
+  WHERE credential_id = ? AND ingested = 0 AND archived = 0
    AND content_text IS NOT NULL
   ORDER BY last_edited_time ASC LIMIT ?`, [cid, limit]);
  }
- function getUnsubmittedRows(limit = 500) {
+ function getUningestedRows(limit = 500) {
   const cid = credId();
   return db.all(`SELECT * FROM database_rows
-  WHERE credential_id = ? AND backend_submitted = 0 AND archived = 0
+  WHERE credential_id = ? AND ingested = 0 AND archived = 0
    AND properties_text IS NOT NULL AND properties_text != ''
   ORDER BY last_edited_time ASC LIMIT ?`, [cid, limit]);
  }
- function markPagesSubmitted(ids) {
+ function markPagesIngested(ids) {
   if (ids.length === 0)
    return;
   const cid = credId();
   for (let i = 0; i < ids.length; i += 99) {
    const batch = ids.slice(i, i + 99);
    const placeholders = batch.map(() => "?").join(",");
-   db.exec(`UPDATE pages SET backend_submitted = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [cid, ...batch]);
+   db.exec(`UPDATE pages SET ingested = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [
+    cid,
+    ...batch
+   ]);
   }
  }
- function markRowsSubmitted(ids) {
+ function markRowsIngested(ids) {
   if (ids.length === 0)
    return;
   const cid = credId();
   for (let i = 0; i < ids.length; i += 99) {
    const batch = ids.slice(i, i + 99);
    const placeholders = batch.map(() => "?").join(",");
-   db.exec(`UPDATE database_rows SET backend_submitted = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [cid, ...batch]);
+   db.exec(`UPDATE database_rows SET ingested = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [cid, ...batch]);
   }
  }
  if (typeof globalThis !== "undefined") {
   const g2 = globalThis;
-  g2.getUnsubmittedPages = getUnsubmittedPages;
-  g2.getUnsubmittedRows = getUnsubmittedRows;
-  g2.markPagesSubmitted = markPagesSubmitted;
-  g2.markRowsSubmitted = markRowsSubmitted;
+  g2.getUningestedPages = getUningestedPages;
+  g2.getUningestedRows = getUningestedRows;
+  g2.markPagesIngested = markPagesIngested;
+  g2.markRowsIngested = markRowsIngested;
  }
  function getEntityCounts() {
   const cid = credId();
@@ -1439,13 +1526,13 @@ var __skill_bundle = (() => {
   ]);
   const summariesPending = db.get("SELECT COUNT(*) as cnt FROM summaries WHERE credential_id = ? AND synced = 0", [cid]);
   return {
-   pages: pages?.cnt || 0,
-   databases: databases?.cnt || 0,
-   databaseRows: databaseRows?.cnt || 0,
-   pagesWithContent: pagesWithContent?.cnt || 0,
-   pagesWithSummary: pagesWithSummary?.cnt || 0,
-   summariesTotal: summariesTotal?.cnt || 0,
-   summariesPending: summariesPending?.cnt || 0
+   pages: (pages ? pages.cnt : 0) || 0,
+   databases: (databases ? databases.cnt : 0) || 0,
+   databaseRows: (databaseRows ? databaseRows.cnt : 0) || 0,
+   pagesWithContent: (pagesWithContent ? pagesWithContent.cnt : 0) || 0,
+   pagesWithSummary: (pagesWithSummary ? pagesWithSummary.cnt : 0) || 0,
+   summariesTotal: (summariesTotal ? summariesTotal.cnt : 0) || 0,
+   summariesPending: (summariesPending ? summariesPending.cnt : 0) || 0
   };
  }
 
@@ -1468,7 +1555,7 @@ var __skill_bundle = (() => {
    content_text TEXT,
    content_synced_at INTEGER,
    page_entities TEXT,
-   backend_submitted INTEGER NOT NULL DEFAULT 0,
+   ingested INTEGER NOT NULL DEFAULT 0,
    synced_at INTEGER NOT NULL,
    PRIMARY KEY (credential_id, id)
   )`, []);
@@ -1483,7 +1570,7 @@ var __skill_bundle = (() => {
    created_time TEXT NOT NULL,
    last_edited_time TEXT NOT NULL,
    archived INTEGER NOT NULL DEFAULT 0,
-   backend_submitted INTEGER NOT NULL DEFAULT 0,
+   ingested INTEGER NOT NULL DEFAULT 0,
    synced_at INTEGER NOT NULL,
    PRIMARY KEY (credential_id, id)
   )`, []);
@@ -1511,7 +1598,7 @@ var __skill_bundle = (() => {
    created_time TEXT NOT NULL,
    last_edited_time TEXT NOT NULL,
    archived INTEGER NOT NULL DEFAULT 0,
-   backend_submitted INTEGER NOT NULL DEFAULT 0,
+   ingested INTEGER NOT NULL DEFAULT 0,
    synced_at INTEGER NOT NULL,
    PRIMARY KEY (credential_id, id),
    FOREIGN KEY (credential_id, database_id) REFERENCES databases(credential_id, id)
@@ -1538,9 +1625,9 @@ var __skill_bundle = (() => {
   migrateAddColumn("users", "credential_id", "TEXT NOT NULL DEFAULT ''");
   migrateAddColumn("database_rows", "credential_id", "TEXT NOT NULL DEFAULT ''");
   migrateAddColumn("summaries", "credential_id", "TEXT NOT NULL DEFAULT ''");
-  migrateAddColumn("pages", "backend_submitted", "INTEGER NOT NULL DEFAULT 0");
-  migrateAddColumn("databases", "backend_submitted", "INTEGER NOT NULL DEFAULT 0");
-  migrateAddColumn("database_rows", "backend_submitted", "INTEGER NOT NULL DEFAULT 0");
+  migrateAddColumn("pages", "ingested", "INTEGER NOT NULL DEFAULT 0");
+  migrateAddColumn("databases", "ingested", "INTEGER NOT NULL DEFAULT 0");
+  migrateAddColumn("database_rows", "ingested", "INTEGER NOT NULL DEFAULT 0");
   migrateAddColumn("pages", "page_entities", "TEXT");
   migrateAddColumn("summaries", "url", "TEXT");
   migrateCompositePrimaryKey("pages", `CREATE TABLE pages_new (
@@ -1559,7 +1646,7 @@ var __skill_bundle = (() => {
    content_text TEXT,
    content_synced_at INTEGER,
    page_entities TEXT,
-   backend_submitted INTEGER NOT NULL DEFAULT 0,
+   ingested INTEGER NOT NULL DEFAULT 0,
    synced_at INTEGER NOT NULL,
    PRIMARY KEY (credential_id, id)
   )`);
@@ -1574,7 +1661,7 @@ var __skill_bundle = (() => {
    created_time TEXT NOT NULL,
    last_edited_time TEXT NOT NULL,
    archived INTEGER NOT NULL DEFAULT 0,
-   backend_submitted INTEGER NOT NULL DEFAULT 0,
+   ingested INTEGER NOT NULL DEFAULT 0,
    synced_at INTEGER NOT NULL,
    PRIMARY KEY (credential_id, id)
   )`);
@@ -1602,7 +1689,7 @@ var __skill_bundle = (() => {
    created_time TEXT NOT NULL,
    last_edited_time TEXT NOT NULL,
    archived INTEGER NOT NULL DEFAULT 0,
-   backend_submitted INTEGER NOT NULL DEFAULT 0,
+   ingested INTEGER NOT NULL DEFAULT 0,
    synced_at INTEGER NOT NULL,
    PRIMARY KEY (credential_id, id),
    FOREIGN KEY (credential_id, database_id) REFERENCES databases(credential_id, id)
@@ -1612,9 +1699,9 @@ var __skill_bundle = (() => {
   db.exec("CREATE INDEX IF NOT EXISTS idx_users_cred ON users(credential_id)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_db_rows_cred ON database_rows(credential_id)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_summaries_cred ON summaries(credential_id)", []);
-  db.exec("CREATE INDEX IF NOT EXISTS idx_pages_backend_submitted ON pages(credential_id, backend_submitted)", []);
-  db.exec("CREATE INDEX IF NOT EXISTS idx_databases_backend_submitted ON databases(credential_id, backend_submitted)", []);
-  db.exec("CREATE INDEX IF NOT EXISTS idx_db_rows_backend_submitted ON database_rows(credential_id, backend_submitted)", []);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_pages_ingested ON pages(credential_id, ingested)", []);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_databases_ingested ON databases(credential_id, ingested)", []);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_db_rows_ingested ON database_rows(credential_id, ingested)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_pages_last_edited ON pages(credential_id, last_edited_time DESC)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_pages_parent ON pages(credential_id, parent_type, parent_id)", []);
   db.exec("CREATE INDEX IF NOT EXISTS idx_pages_archived ON pages(credential_id, archived)", []);
@@ -1638,7 +1725,7 @@ var __skill_bundle = (() => {
     "table",
     tableName
    ]);
-   if (!row?.sql || row.sql.includes("PRIMARY KEY (credential_id, id)"))
+   if (!row || !row.sql || row.sql.includes("PRIMARY KEY (credential_id, id)"))
     return;
    const newTableName = `${tableName}_new`;
    db.exec(createNewTableSql, []);
@@ -1657,7 +1744,7 @@ var __skill_bundle = (() => {
  function syncIntegrationMetadata(params) {
   try {
    const memoryBridge = globalThis.memory;
-   if (typeof memoryBridge?.insert !== "function")
+   if (typeof (memoryBridge == null ? void 0 : memoryBridge.insert) !== "function")
     return;
    memoryBridge.insert(params);
   } catch (error) {
@@ -1666,66 +1753,410 @@ var __skill_bundle = (() => {
  }
 
  // skills-ts-out/core/notion/sync.js
+ var THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1e3;
+ var MIN_CONTENT_LENGTH = 50;
+ function syncProgress(phase, progress, message) {
+  const s = getNotionSkillState2();
+  s.syncStatus.syncPhase = phase;
+  s.syncStatus.syncProgress = Math.round(Math.min(100, Math.max(0, progress)));
+  s.syncStatus.syncMessage = message;
+  console.log(`[notion][sync] [${phase}] ${progress.toFixed(0)}% \u2014 ${message}`);
+  publishSyncState();
+ }
  function performSync() {
   const s = getNotionSkillState2();
   if (s.syncStatus.syncInProgress) {
    console.log("[notion] Sync already in progress, skipping");
    return;
   }
-  if (!oauth.getCredential()) {
+  if (!isNotionConnected()) {
    console.log("[notion] No credential, skipping sync");
    return;
   }
   const startTime = Date.now();
   s.syncStatus.syncInProgress = true;
   s.syncStatus.lastSyncError = null;
-  publishSyncState();
-  (async () => {
-   try {
-    console.log("[notion] Sync phase 1: users");
-    await syncUsers();
-    console.log("[notion] Sync phase 2: pages & databases");
-    await syncSearchItems();
-    if (s.config.contentSyncEnabled) {
-     console.log("[notion] Sync phase 3: page content");
-     await syncContent(startTime, CONTENT_SYNC_TIME_BUDGET_MS);
+  syncProgress("starting", 0, "Starting sync...");
+  try {
+   syncProgress("users", 0, "Fetching workspace users...");
+   syncUsers();
+   syncProgress("users", 5, "Users synced");
+   syncProgress("sync", 5, "Discovering and syncing pages...");
+   syncPipeline();
+   syncProgress("databases", 90, "Syncing databases (data_sources)...");
+   syncDataSources();
+   insertNotionMemorySnapshot();
+   const durationMs = Date.now() - startTime;
+   const nowMs = Date.now();
+   s.syncStatus.nextSyncTime = nowMs + s.config.syncIntervalMinutes * 60 * 1e3;
+   s.syncStatus.lastSyncDurationMs = durationMs;
+   const counts = getEntityCounts();
+   s.syncStatus.lastSyncTime = nowMs;
+   s.syncStatus.totalPages = counts.pages;
+   s.syncStatus.totalDatabases = counts.databases;
+   s.syncStatus.pagesWithContent = counts.pagesWithContent;
+   s.syncStatus.pagesWithSummary = counts.pagesWithSummary;
+   s.syncStatus.summariesTotal = counts.summariesTotal;
+   s.syncStatus.summariesPending = counts.summariesPending;
+   s.syncStatus.totalDatabaseRows = counts.databaseRows;
+   const secs = (durationMs / 1e3).toFixed(1);
+   syncProgress("done", 100, `Sync complete in ${secs}s \u2014 ${counts.pages} pages, ${counts.databases} dbs, ${counts.pagesWithContent} with content`);
+  } catch (error) {
+   const errorMsg = error instanceof Error ? error.message : String(error);
+   s.syncStatus.lastSyncError = errorMsg;
+   s.syncStatus.lastSyncDurationMs = Date.now() - startTime;
+   syncProgress("error", 0, `Sync failed: ${errorMsg}`);
+  } finally {
+   s.syncStatus.syncInProgress = false;
+   s.syncStatus.syncPhase = null;
+   s.syncStatus.syncProgress = 0;
+   publishSyncState();
+  }
+ }
+ function syncUsers() {
+  let startCursor;
+  let hasMore = true;
+  let count = 0;
+  while (hasMore) {
+   const result = notionApi.listUsers(100, startCursor);
+   for (const user of result.results) {
+    try {
+     upsertUser(user);
+     count++;
+    } catch (e) {
+     console.error(`[notion] Failed to upsert user ${user.id}: ${e}`);
     }
-    console.log("[notion] Sync phase 4: sync summaries to server");
-    console.log("[notion] Sync phase 5: ingest documents into knowledge graph");
-    ingestNewDocuments();
-    const durationMs = Date.now() - startTime;
-    const nowMs = Date.now();
-    s.syncStatus.nextSyncTime = nowMs + s.config.syncIntervalMinutes * 60 * 1e3;
-    s.syncStatus.lastSyncDurationMs = durationMs;
-    const counts = getEntityCounts();
-    if (counts.pages > 0 || counts.databases > 0) {
-     s.syncStatus.lastSyncTime = nowMs;
-    }
-    s.syncStatus.totalPages = counts.pages;
-    s.syncStatus.totalDatabases = counts.databases;
-    s.syncStatus.pagesWithContent = counts.pagesWithContent;
-    s.syncStatus.pagesWithSummary = counts.pagesWithSummary;
-    s.syncStatus.summariesTotal = counts.summariesTotal;
-    s.syncStatus.summariesPending = counts.summariesPending;
-    s.syncStatus.totalDatabaseRows = counts.databaseRows;
-    insertNotionMemorySnapshot();
-   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    s.syncStatus.lastSyncError = errorMsg;
-    s.syncStatus.lastSyncDurationMs = Date.now() - startTime;
-    console.error(`[notion] Sync failed: ${errorMsg}`);
-   } finally {
-    s.syncStatus.syncInProgress = false;
-    publishSyncState();
    }
-  })();
+   hasMore = result.has_more;
+   startCursor = result.next_cursor || void 0;
+   syncProgress("users", Math.min(4, 1 + count), `Fetched ${count} users...`);
+  }
+  syncProgress("users", 5, `Synced ${count} users`);
+ }
+ function syncPipeline() {
+  const s = getNotionSkillState2();
+  const lastSyncTime = s.syncStatus.lastSyncTime;
+  const isFirstSync = lastSyncTime === 0;
+  const cutoffMs = Date.now() - THIRTY_DAYS_MS;
+  const contentEnabled = s.config.contentSyncEnabled;
+  let startCursor;
+  let hasMore = true;
+  let pageCount = 0;
+  let pageSkipped = 0;
+  let dbCount = 0;
+  let contentSynced = 0;
+  let ingested = 0;
+  let errorCount = 0;
+  let reachedOldItems = false;
+  let batchNum = 0;
+  while (hasMore && !reachedOldItems) {
+   batchNum++;
+   const body = {
+    page_size: 100,
+    sort: { direction: "descending", timestamp: "last_edited_time" }
+   };
+   if (startCursor)
+    body.start_cursor = startCursor;
+   const result = notionApi.search(body);
+   for (const item of result.results) {
+    const rec = item;
+    const lastEdited = rec.last_edited_time;
+    if (!lastEdited)
+     continue;
+    const editedMs = new Date(lastEdited).getTime();
+    if (editedMs < cutoffMs) {
+     reachedOldItems = true;
+     break;
+    }
+    if (!isFirstSync && editedMs <= lastSyncTime) {
+     reachedOldItems = true;
+     break;
+    }
+    const objectType = rec.object;
+    if (objectType === "page") {
+     const existing = getPageById(rec.id);
+     if (existing && existing.last_edited_time === lastEdited && existing.ingested === 1 && existing.content_text) {
+      pageSkipped++;
+      continue;
+     }
+     const pageTitle = formatPageTitle(rec);
+     try {
+      upsertPage(rec);
+      pageCount++;
+     } catch (e) {
+      console.error(`[notion][sync] FAIL upsert page "${pageTitle}" (${rec.id}): ${e}`);
+      errorCount++;
+      continue;
+     }
+     if (contentEnabled) {
+      const pageT0 = Date.now();
+      try {
+       const text = fetchBlockTreeText(rec.id, 2);
+       updatePageContent(rec.id, text);
+       contentSynced++;
+       const trimmed = text.trim();
+       const fetchMs = Date.now() - pageT0;
+       if (trimmed.length >= MIN_CONTENT_LENGTH) {
+        try {
+         memory.insert({
+          title: pageTitle || `Notion page ${rec.id}`,
+          content: trimmed,
+          sourceType: "doc",
+          documentId: `${rec.last_edited_time ? new Date(rec.last_edited_time).getTime() : Date.now()}-notion-page-${rec.id}`,
+          metadata: {
+           source: "notion",
+           type: "page",
+           pageId: rec.id,
+           url: rec.url,
+           parentType: rec.parent ? rec.parent.type : null,
+           createdTime: rec.created_time,
+           lastEditedTime: rec.last_edited_time
+          },
+          createdAt: rec.created_time ? new Date(rec.created_time).getTime() / 1e3 : void 0,
+          updatedAt: rec.last_edited_time ? new Date(rec.last_edited_time).getTime() / 1e3 : void 0
+         });
+         markPagesIngested([rec.id]);
+         ingested++;
+         console.log(`[notion][sync] \u2713 page #${pageCount} "${pageTitle}" \u2014 ${trimmed.length}ch, ingested (${fetchMs}ms)`);
+        } catch (e) {
+         console.error(`[notion][sync] FAIL ingest page "${pageTitle}" (${rec.id}): ${e}`);
+         markPagesIngested([rec.id]);
+        }
+       } else {
+        markPagesIngested([rec.id]);
+        console.log(`[notion][sync] \u2713 page #${pageCount} "${pageTitle}" \u2014 ${trimmed.length}ch (too short, skipped ingest) (${fetchMs}ms)`);
+       }
+      } catch (e) {
+       console.error(`[notion][sync] FAIL content page "${pageTitle}" (${rec.id}): ${e}`);
+      }
+     } else {
+      console.log(`[notion][sync] \u2713 page #${pageCount} "${pageTitle}" \u2014 metadata only`);
+     }
+    } else if (objectType === "data_source" || objectType === "database") {
+     const existing = getDatabaseById ? getDatabaseById(rec.id) : null;
+     if (existing && existing.last_edited_time === lastEdited) {
+      continue;
+     }
+     try {
+      upsertDatabase(rec);
+      dbCount++;
+     } catch (e) {
+      console.error(`[notion] Failed to upsert database ${rec.id}: ${e}`);
+      errorCount++;
+     }
+    }
+   }
+   hasMore = result.has_more;
+   startCursor = result.next_cursor || void 0;
+   const batchCounts = getEntityCounts();
+   s.syncStatus.totalPages = batchCounts.pages;
+   s.syncStatus.totalDatabases = batchCounts.databases;
+   s.syncStatus.pagesWithContent = batchCounts.pagesWithContent;
+   const pct = 5 + Math.min(85, batchNum / 50 * 85);
+   const total = pageCount + pageSkipped;
+   syncProgress("sync", pct, `batch ${batchNum}: ${total} pages (${pageCount} new, ${contentSynced} content, ${ingested} ingested), ${dbCount} dbs`);
+  }
+  state.set("last_search_sync", Date.now());
+  const counts = getEntityCounts();
+  s.syncStatus.totalPages = counts.pages;
+  s.syncStatus.totalDatabases = counts.databases;
+  s.syncStatus.pagesWithContent = counts.pagesWithContent;
+  syncProgress("sync", 90, `Pipeline done: ${pageCount} pages synced, ${contentSynced} content fetched, ${ingested} ingested, ${dbCount} dbs` + (pageSkipped > 0 ? ` (${pageSkipped} unchanged)` : "") + (errorCount > 0 ? `, ${errorCount} errors` : ""));
+ }
+ function syncDataSources() {
+  const s = getNotionSkillState2();
+  const lastSyncTime = s.syncStatus.lastSyncTime;
+  const isFirstSync = lastSyncTime === 0;
+  const cutoffMs = Date.now() - THIRTY_DAYS_MS;
+  let startCursor;
+  let hasMore = true;
+  let dbCount = 0;
+  let skipped = 0;
+  let rowCount = 0;
+  let rowIngested = 0;
+  let reachedOldItems = false;
+  const syncedDbIds = [];
+  while (hasMore && !reachedOldItems) {
+   const searchBody = {
+    page_size: 100,
+    sort: { direction: "descending", timestamp: "last_edited_time" },
+    filter: { property: "object", value: "data_source" }
+   };
+   if (startCursor)
+    searchBody.start_cursor = startCursor;
+   const result = notionApi.search(searchBody);
+   for (const item of result.results) {
+    const rec = item;
+    const lastEdited = rec.last_edited_time;
+    if (!lastEdited)
+     continue;
+    const editedMs = new Date(lastEdited).getTime();
+    if (editedMs < cutoffMs) {
+     reachedOldItems = true;
+     break;
+    }
+    if (!isFirstSync && editedMs <= lastSyncTime) {
+     reachedOldItems = true;
+     break;
+    }
+    const existing = getDatabaseById ? getDatabaseById(rec.id) : null;
+    if (existing && existing.last_edited_time === lastEdited) {
+     skipped++;
+    } else {
+     try {
+      upsertDatabase(rec);
+      dbCount++;
+      syncedDbIds.push(rec.id);
+     } catch (e) {
+      console.error(`[notion] Failed to upsert data_source ${rec.id}: ${e}`);
+     }
+    }
+   }
+   hasMore = result.has_more;
+   startCursor = result.next_cursor || void 0;
+   syncProgress("databases", 91, `Data sources: ${dbCount} synced, ${skipped} unchanged...`);
+  }
+  syncProgress("databases", 92, `Data sources: ${dbCount} synced${skipped > 0 ? `, ${skipped} unchanged` : ""}. Fetching rows...`);
+  for (let i = 0; i < syncedDbIds.length; i++) {
+   const dbId = syncedDbIds[i];
+   const dbInfo = getDatabaseById(dbId);
+   const dbTitle = dbInfo ? dbInfo.title : dbId;
+   let dbRowCount = 0;
+   try {
+    let rowCursor;
+    let rowHasMore = true;
+    while (rowHasMore) {
+     const queryBody = { page_size: 100 };
+     if (rowCursor)
+      queryBody.start_cursor = rowCursor;
+     const rowResult = notionApi.queryDataSource(dbId, queryBody);
+     for (const row of rowResult.results) {
+      const rowRec = row;
+      const rowLastEdited = rowRec.last_edited_time;
+      const existingRow = getDatabaseRowById(rowRec.id);
+      if (existingRow && existingRow.last_edited_time === rowLastEdited && existingRow.ingested === 1) {
+       continue;
+      }
+      try {
+       upsertDatabaseRow(rowRec, dbId);
+       rowCount++;
+       dbRowCount++;
+       const content = buildRowContent(rowRec).trim();
+       const rowTitle = extractRowTitle(rowRec).trim();
+       if (content.length >= MIN_CONTENT_LENGTH) {
+        try {
+         memory.insert({
+          title: rowTitle + " (" + dbTitle + ")",
+          content,
+          sourceType: "doc",
+          documentId: (rowLastEdited ? new Date(rowLastEdited).getTime() : Date.now()) + "-notion-dbrow-" + rowRec.id,
+          metadata: {
+           source: "notion",
+           type: "database_row",
+           databaseId: dbId,
+           databaseTitle: dbTitle,
+           rowId: rowRec.id,
+           url: rowRec.url,
+           createdTime: rowRec.created_time,
+           lastEditedTime: rowRec.last_edited_time
+          },
+          createdAt: rowRec.created_time ? new Date(rowRec.created_time).getTime() / 1e3 : void 0,
+          updatedAt: rowRec.last_edited_time ? new Date(rowRec.last_edited_time).getTime() / 1e3 : void 0
+         });
+         markRowsIngested([rowRec.id]);
+         rowIngested++;
+        } catch (e) {
+         console.error(`[notion][sync] FAIL ingest row "${rowTitle}" (${rowRec.id}) in db "${dbTitle}": ${e}`);
+        }
+       } else {
+        markRowsIngested([rowRec.id]);
+       }
+      } catch (e) {
+       console.error(`[notion][sync] FAIL upsert row ${rowRec.id} in db ${dbId}: ${e}`);
+      }
+     }
+     rowHasMore = rowResult.has_more;
+     rowCursor = rowResult.next_cursor || void 0;
+    }
+    console.log(`[notion][sync] \u2713 db "${dbTitle}" \u2014 ${dbRowCount} rows fetched, ${rowIngested} ingested`);
+   } catch (e) {
+    console.error(`[notion][sync] FAIL query db "${dbTitle}" (${dbId}): ${e}`);
+   }
+   const pct = 92 + Math.min(3, (i + 1) / syncedDbIds.length * 3);
+   syncProgress("databases", pct, `DB ${i + 1}/${syncedDbIds.length}: ${rowCount} rows total`);
+  }
+  syncProgress("databases", 95, `Data sources done: ${dbCount} dbs, ${rowCount} rows (${rowIngested} ingested)${skipped > 0 ? `, ${skipped} unchanged` : ""}`);
+ }
+ function extractRowTitle(rowRec) {
+  const props = rowRec.properties;
+  if (props) {
+   for (const key of Object.keys(props)) {
+    const prop = props[key];
+    if (prop.type === "title" && Array.isArray(prop.title)) {
+     const texts = prop.title;
+     const t = texts.map((rt) => rt.plain_text || "").join("");
+     if (t)
+      return t;
+    }
+   }
+  }
+  return rowRec.id || "";
+ }
+ function buildRowContent(rowRec) {
+  const props = rowRec.properties;
+  if (!props)
+   return "";
+  const parts = [];
+  for (const [key, propVal] of Object.entries(props)) {
+   const prop = propVal;
+   const propType = prop.type;
+   if (propType === "title" || propType === "rich_text") {
+    const arr = prop[propType];
+    if (Array.isArray(arr)) {
+     const t = arr.map((rt) => rt.plain_text || "").join("");
+     if (t)
+      parts.push(key + ": " + t);
+    }
+   } else if (propType === "number" && prop.number != null) {
+    parts.push(key + ": " + prop.number);
+   } else if (propType === "select") {
+    const sel = prop.select;
+    if (sel && sel.name)
+     parts.push(key + ": " + sel.name);
+   } else if (propType === "multi_select" && Array.isArray(prop.multi_select)) {
+    const names = prop.multi_select.map((ms) => ms.name).filter(Boolean);
+    if (names.length)
+     parts.push(key + ": " + names.join(", "));
+   } else if (propType === "date") {
+    const dt = prop.date;
+    if (dt && dt.start)
+     parts.push(key + ": " + dt.start);
+   } else if (propType === "checkbox") {
+    parts.push(key + ": " + (prop.checkbox ? "yes" : "no"));
+   } else if (propType === "url" && prop.url) {
+    parts.push(key + ": " + prop.url);
+   } else if (propType === "email" && prop.email) {
+    parts.push(key + ": " + prop.email);
+   } else if (propType === "phone_number" && prop.phone_number) {
+    parts.push(key + ": " + prop.phone_number);
+   } else if (propType === "status") {
+    const st = prop.status;
+    if (st && st.name)
+     parts.push(key + ": " + st.name);
+   } else if (propType === "people" && Array.isArray(prop.people)) {
+    const names = prop.people.map((p) => p.name || "").filter(Boolean);
+    if (names.length)
+     parts.push(key + ": " + names.join(", "));
+   }
+  }
+  return parts.join("\n");
  }
  function insertNotionMemorySnapshot() {
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
   const s = getNotionSkillState2();
-  const profile = state.get("profile") ?? null;
-  if (!profile?.id)
+  const profile = state.get("profile") || null;
+  if (!profile || !profile.id)
    return;
   const pages = getLocalPages({ limit: 100 }).map((p) => ({
    id: p.id,
@@ -1742,8 +2173,8 @@ var __skill_bundle = (() => {
    archived: p.archived === 1,
    synced_at: p.synced_at,
    has_content: !!p.content_text,
-   content_length: p.content_text ? p.content_text.length : 0,
-   content_text: p.content_text
+   content_length: p.content_text ? p.content_text.length : 0
+   // content_text omitted — too large for metadata snapshot
   }));
   const summaries = getLocalSummaries(100).map((summary) => ({
    id: summary.id,
@@ -1792,10 +2223,10 @@ var __skill_bundle = (() => {
    snapshot_version: "notion-sync-v2",
    captured_at: nowIso,
    id: profile.id,
-   name: profile.name ?? null,
-   email: profile.email ?? null,
-   type: profile.type ?? null,
-   avatar_url: profile.avatar_url ?? null,
+   name: profile.name || null,
+   email: profile.email || null,
+   type: profile.type || null,
+   avatar_url: profile.avatar_url || null,
    workspace_name: s.config.workspaceName || null,
    sync: {
     in_progress: s.syncStatus.syncInProgress,
@@ -1825,269 +2256,15 @@ var __skill_bundle = (() => {
    updatedAt: now / 1e3
   });
  }
- async function syncUsers() {
-  let startCursor;
-  let hasMore = true;
-  let count = 0;
-  while (hasMore) {
-   const result = await notionApi.listUsers(100, startCursor);
-   for (const user of result.results) {
-    try {
-     upsertUser(user);
-     count++;
-    } catch (e) {
-     console.error(`[notion] Failed to upsert user ${user.id}: ${e}`);
-    }
-   }
-   hasMore = result.has_more;
-   startCursor = result.next_cursor || void 0;
-  }
-  console.log(`[notion] Synced ${count} users`);
- }
- var THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1e3;
- async function syncSearchItems() {
-  const s = getNotionSkillState2();
-  const lastSyncTime = s.syncStatus.lastSyncTime;
-  const isFirstSync = lastSyncTime === 0;
-  const cutoffMs = Date.now() - THIRTY_DAYS_MS;
-  let startCursor;
-  let hasMore = true;
-  let pageCount = 0;
-  let dbCount = 0;
-  let pageSkipped = 0;
-  let dbSkipped = 0;
-  let errorCount = 0;
-  let reachedOldItems = false;
-  while (hasMore && !reachedOldItems) {
-   const body = {
-    page_size: 100,
-    sort: { direction: "descending", timestamp: "last_edited_time" }
-   };
-   if (startCursor)
-    body.start_cursor = startCursor;
-   const result = await notionApi.search(body);
-   for (const item of result.results) {
-    const rec = item;
-    const lastEdited = rec.last_edited_time;
-    if (!lastEdited)
-     continue;
-    const editedMs = new Date(lastEdited).getTime();
-    if (editedMs < cutoffMs) {
-     reachedOldItems = true;
-     break;
-    }
-    if (!isFirstSync && editedMs <= lastSyncTime) {
-     reachedOldItems = true;
-     break;
-    }
-    const objectType = rec.object;
-    if (objectType === "page") {
-     const existing = getPageById?.(rec.id);
-     if (existing && existing.last_edited_time === lastEdited) {
-      pageSkipped++;
-     } else {
-      try {
-       upsertPage(rec);
-       pageCount++;
-      } catch (e) {
-       console.error(`[notion] Failed to upsert page ${rec.id}: ${e}`);
-       errorCount++;
-      }
-     }
-    } else if (objectType === "data_source" || objectType === "database") {
-     const existing = getDatabaseById?.(rec.id);
-     if (existing && existing.last_edited_time === lastEdited) {
-      dbSkipped++;
-     } else {
-      try {
-       upsertDatabase(rec);
-       dbCount++;
-      } catch (e) {
-       console.error(`[notion] Failed to upsert database ${rec.id}: ${e}`);
-       errorCount++;
-      }
-     }
-    } else {
-     console.log(`[notion] Unknown object type in search results: ${objectType}`);
-    }
-   }
-   hasMore = result.has_more;
-   startCursor = result.next_cursor || void 0;
-  }
-  const dsResult = await syncDataSources(upsertDatabase, getDatabaseById, cutoffMs, lastSyncTime, isFirstSync);
-  dbCount += dsResult.count;
-  dbSkipped += dsResult.skipped;
-  errorCount += dsResult.errors;
-  state.set("last_search_sync", Date.now());
-  const skipMsg = pageSkipped > 0 || dbSkipped > 0 ? ` (${pageSkipped} pages, ${dbSkipped} dbs unchanged)` : "";
-  const errorMsg = errorCount > 0 ? `, ${errorCount} errors` : "";
-  console.log(`[notion] Synced ${pageCount} pages, ${dbCount} databases (last 30 days)${skipMsg}${errorMsg}`);
- }
- async function syncDataSources(upsertDatabase2, getDatabaseById2, cutoffMs, lastSyncTime, isFirstSync) {
-  let startCursor;
-  let hasMore = true;
-  let count = 0;
-  let skipped = 0;
-  let errors = 0;
-  let reachedOldItems = false;
-  while (hasMore && !reachedOldItems) {
-   const result = await notionApi.search({
-    page_size: 100,
-    sort: { direction: "descending", timestamp: "last_edited_time" },
-    filter: { property: "object", value: "data_source" },
-    ...startCursor ? { start_cursor: startCursor } : {}
-   });
-   for (const item of result.results) {
-    const rec = item;
-    const lastEdited = rec.last_edited_time;
-    if (!lastEdited)
-     continue;
-    const editedMs = new Date(lastEdited).getTime();
-    if (editedMs < cutoffMs) {
-     reachedOldItems = true;
-     break;
-    }
-    if (!isFirstSync && editedMs <= lastSyncTime) {
-     reachedOldItems = true;
-     break;
-    }
-    const existing = getDatabaseById2?.(rec.id);
-    if (existing && existing.last_edited_time === lastEdited) {
-     skipped++;
-    } else {
-     try {
-      upsertDatabase2(rec);
-      count++;
-     } catch (e) {
-      console.error(`[notion] Failed to upsert data_source ${rec.id}: ${e}`);
-      errors++;
-     }
-    }
-   }
-   hasMore = result.has_more;
-   startCursor = result.next_cursor || void 0;
-  }
-  return { count, skipped, errors };
- }
- var CONTENT_SYNC_TIME_BUDGET_MS = 18e3;
- async function syncContent(startTime, budgetMs) {
-  const s = getNotionSkillState2();
-  const batchSize = s.config.maxPagesPerContentSync;
-  const cutoffIso = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
-  const pages = getPagesNeedingContent(batchSize, cutoffIso);
-  let synced = 0;
-  let failed = 0;
-  for (const page of pages) {
-   if (Date.now() - startTime > budgetMs) {
-    console.log("[notion] Content sync time budget reached, deferring remaining pages");
-    break;
-   }
-   try {
-    const text = await fetchBlockTreeText(page.id, 2);
-    updatePageContent(page.id, text);
-    synced++;
-   } catch (e) {
-    console.error(`[notion] Failed to sync content for page ${page.id}: ${e}`);
-    failed++;
-   }
-  }
-  console.log(`[notion] Content sync: ${synced} pages updated${failed > 0 ? `, ${failed} failed` : ""}`);
- }
- var INGEST_QUERY_LIMIT = 500;
- function ingestNewDocuments() {
-  const pages = getUnsubmittedPages(INGEST_QUERY_LIMIT);
-  const rows = getUnsubmittedRows(INGEST_QUERY_LIMIT);
-  if (pages.length === 0 && rows.length === 0)
-   return;
-  const emptyPageIds = [];
-  const emptyRowIds = [];
-  const submittedPageIds = [];
-  const submittedRowIds = [];
-  let ingested = 0;
-  for (const page of pages) {
-   const content = page.content_text || "";
-   if (content.length === 0) {
-    emptyPageIds.push(page.id);
-    continue;
-   }
-   try {
-    memory.insert({
-     title: page.title || `Notion page ${page.id}`,
-     content,
-     sourceType: "doc",
-     documentId: `notion-page-${page.id}`,
-     metadata: {
-      source: "notion",
-      type: "page",
-      pageId: page.id,
-      url: page.url,
-      parentType: page.parent_type,
-      parentId: page.parent_id,
-      createdTime: page.created_time,
-      lastEditedTime: page.last_edited_time
-     },
-     createdAt: page.created_time ? new Date(page.created_time).getTime() / 1e3 : void 0,
-     updatedAt: page.last_edited_time ? new Date(page.last_edited_time).getTime() / 1e3 : void 0
-    });
-    submittedPageIds.push(page.id);
-    ingested++;
-   } catch (e) {
-    console.error(`[notion] Failed to ingest page ${page.id}: ${e}`);
-   }
-  }
-  for (const row of rows) {
-   const content = row.properties_text || "";
-   if (content.length === 0) {
-    emptyRowIds.push(row.id);
-    continue;
-   }
-   try {
-    memory.insert({
-     title: row.title || `Notion row ${row.id}`,
-     content,
-     sourceType: "doc",
-     documentId: `notion-row-${row.id}`,
-     metadata: {
-      source: "notion",
-      type: "database_row",
-      rowId: row.id,
-      databaseId: row.database_id,
-      url: row.url,
-      createdTime: row.created_time,
-      lastEditedTime: row.last_edited_time
-     },
-     createdAt: row.created_time ? new Date(row.created_time).getTime() / 1e3 : void 0,
-     updatedAt: row.last_edited_time ? new Date(row.last_edited_time).getTime() / 1e3 : void 0
-    });
-    submittedRowIds.push(row.id);
-    ingested++;
-   } catch (e) {
-    console.error(`[notion] Failed to ingest row ${row.id}: ${e}`);
-   }
-  }
-  if (emptyPageIds.length > 0)
-   markPagesSubmitted(emptyPageIds);
-  if (emptyRowIds.length > 0)
-   markRowsSubmitted(emptyRowIds);
-  if (submittedPageIds.length > 0)
-   markPagesSubmitted(submittedPageIds);
-  if (submittedRowIds.length > 0)
-   markRowsSubmitted(submittedRowIds);
-  if (ingested > 0) {
-   console.log(`[notion] Ingested ${ingested} document(s) into knowledge graph`);
-  }
- }
  function publishSyncState() {
   const s = getNotionSkillState2();
-  const isConnected = !!oauth.getCredential();
+  const isConnected = isNotionConnected();
   state.setPartial({
-   // Standard SkillHostConnectionState fields
    connection_status: isConnected ? "connected" : "disconnected",
    auth_status: isConnected ? "authenticated" : "not_authenticated",
    connection_error: s.syncStatus.lastSyncError || null,
    auth_error: null,
    is_initialized: isConnected,
-   // Skill-specific fields
    workspaceName: s.config.workspaceName || null,
    syncInProgress: s.syncStatus.syncInProgress,
    lastSyncTime: s.syncStatus.lastSyncTime ? new Date(s.syncStatus.lastSyncTime).toISOString() : null,
@@ -2100,7 +2277,10 @@ var __skill_bundle = (() => {
    summariesTotal: s.syncStatus.summariesTotal,
    summariesPending: s.syncStatus.summariesPending,
    lastSyncError: s.syncStatus.lastSyncError,
-   lastSyncDurationMs: s.syncStatus.lastSyncDurationMs
+   lastSyncDurationMs: s.syncStatus.lastSyncDurationMs,
+   syncPhase: s.syncStatus.syncPhase,
+   syncProgress: s.syncStatus.syncProgress,
+   syncMessage: s.syncStatus.syncMessage
   });
  }
 
@@ -2119,7 +2299,7 @@ var __skill_bundle = (() => {
    },
    required: ["block_id", "blocks"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || "";
     const blocksJson = args.blocks || "";
@@ -2138,7 +2318,7 @@ var __skill_bundle = (() => {
     if (!Array.isArray(children) || children.length === 0) {
      return JSON.stringify({ error: "blocks must be a non-empty array" });
     }
-    const result = await notionApi.appendBlockChildren(blockId, children);
+    const result = notionApi.appendBlockChildren(blockId, children);
     return JSON.stringify({
      success: true,
      blocks_added: result.results.length,
@@ -2176,10 +2356,11 @@ var __skill_bundle = (() => {
    },
    required: ["text"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || args.page_id || "";
-    const text = String(args.text ?? args.content ?? "").trim();
+    const _textVal = args.text !== void 0 && args.text !== null ? args.text : args.content !== void 0 && args.content !== null ? args.content : "";
+    const text = String(_textVal).trim();
     if (!blockId) {
      return JSON.stringify({
       success: false,
@@ -2194,7 +2375,7 @@ var __skill_bundle = (() => {
     }
     const paragraphs = text.split("\n").filter((p) => p.trim());
     const children = paragraphs.map(buildParagraphBlock);
-    const result = await notionApi.appendBlockChildren(blockId, children);
+    const result = notionApi.appendBlockChildren(blockId, children);
     return JSON.stringify({
      success: true,
      blocks_added: result.results.length,
@@ -2226,7 +2407,7 @@ var __skill_bundle = (() => {
    },
    required: ["text"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageId = args.page_id;
     const blockId = args.block_id;
@@ -2252,9 +2433,9 @@ var __skill_bundle = (() => {
     } else {
      body.parent = { type: "page_id", page_id: pageId };
     }
-    const comment = await notionApi.createComment(body);
+    const comment = notionApi.createComment(body);
     const rec = comment;
-    return JSON.stringify({ object: rec.object ?? "comment", id: rec.id });
+    return JSON.stringify({ object: rec.object || "comment", id: rec.id });
    } catch (e) {
     return JSON.stringify({ error: formatApiError(e) });
    }
@@ -2280,7 +2461,7 @@ var __skill_bundle = (() => {
    },
    required: ["parent_page_id", "title"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const parentId = args.parent_page_id || "";
     const title = args.title || "";
@@ -2304,9 +2485,9 @@ var __skill_bundle = (() => {
      title: buildRichText(title),
      properties
     };
-    const dbResult = await notionApi.createDatabase(body);
+    const dbResult = notionApi.createDatabase(body);
     const rec = dbResult;
-    return JSON.stringify({ object: rec.object ?? "database", id: rec.id });
+    return JSON.stringify({ object: rec.object || "database", id: rec.id });
    } catch (e) {
     return JSON.stringify({ error: formatApiError(e) });
    }
@@ -2335,7 +2516,7 @@ var __skill_bundle = (() => {
    },
    required: ["parent_id", "title"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const parentId = args.parent_id || "";
     const parentType = args.parent_type || "page_id";
@@ -2350,7 +2531,7 @@ var __skill_bundle = (() => {
     }
     let parentPayload;
     if (parentType === "database_id") {
-     const dataSourceId = await notionApi.resolveDataSourceId(parentId);
+     const dataSourceId = notionApi.resolveDataSourceId(parentId);
      parentPayload = { data_source_id: dataSourceId };
     } else {
      parentPayload = { [parentType]: parentId };
@@ -2374,10 +2555,10 @@ var __skill_bundle = (() => {
     if (content && !appendContentAfterCreate) {
      body.children = [buildParagraphBlock(content)];
     }
-    const page = await notionApi.createPage(body);
+    const page = notionApi.createPage(body);
     const pageId = page.id;
     if (appendContentAfterCreate && content) {
-     await notionApi.appendBlockChildren(pageId, [buildParagraphBlock(content)]);
+     notionApi.appendBlockChildren(pageId, [buildParagraphBlock(content)]);
     }
     return JSON.stringify({
      success: true,
@@ -2398,15 +2579,15 @@ var __skill_bundle = (() => {
    properties: { block_id: { type: "string", description: "The block ID to delete" } },
    required: ["block_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || "";
     if (!blockId) {
      return JSON.stringify({ error: "block_id is required" });
     }
-    const result = await notionApi.deleteBlock(blockId);
+    const result = notionApi.deleteBlock(blockId);
     const rec = result;
-    return JSON.stringify({ object: rec.object ?? "block", id: rec.id });
+    return JSON.stringify({ object: rec.object || "block", id: rec.id });
    } catch (e) {
     return JSON.stringify({ error: formatApiError(e) });
    }
@@ -2422,13 +2603,13 @@ var __skill_bundle = (() => {
    properties: { page_id: { type: "string", description: "The page ID to delete/archive" } },
    required: ["page_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageId = args.page_id || "";
     if (!pageId) {
      return JSON.stringify({ error: "page_id is required" });
     }
-    const page = await notionApi.archivePage(pageId);
+    const page = notionApi.archivePage(pageId);
     return JSON.stringify({
      success: true,
      message: "Page archived",
@@ -2449,13 +2630,13 @@ var __skill_bundle = (() => {
    properties: { block_id: { type: "string", description: "The block ID" } },
    required: ["block_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || "";
     if (!blockId) {
      return JSON.stringify({ error: "block_id is required" });
     }
-    const block = await notionApi.getBlock(blockId);
+    const block = notionApi.getBlock(blockId);
     return JSON.stringify({
      ...formatBlockSummary(block),
      raw: block
@@ -2478,14 +2659,14 @@ var __skill_bundle = (() => {
    },
    required: ["block_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || "";
     const pageSize = Math.min(args.page_size || 50, 100);
     if (!blockId) {
      return JSON.stringify({ error: "block_id is required" });
     }
-    const result = await notionApi.getBlockChildren(blockId, pageSize);
+    const result = notionApi.getBlockChildren(blockId, pageSize);
     return JSON.stringify({
      parent_id: blockId,
      count: result.results.length,
@@ -2507,14 +2688,14 @@ var __skill_bundle = (() => {
    properties: { database_id: { type: "string", description: "The database ID" } },
    required: ["database_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const databaseId = args.database_id || "";
     if (!databaseId) {
      return JSON.stringify({ error: "database_id is required" });
     }
-    const dataSourceId = await notionApi.resolveDataSourceId(databaseId);
-    const dsResult = await notionApi.getDataSource(dataSourceId);
+    const dataSourceId = notionApi.resolveDataSourceId(databaseId);
+    const dsResult = notionApi.getDataSource(dataSourceId);
     const dsRec = dsResult;
     const props = dsRec.properties;
     const schema = {};
@@ -2542,13 +2723,13 @@ var __skill_bundle = (() => {
    },
    required: ["page_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageId = args.page_id || "";
     if (!pageId) {
      return JSON.stringify({ error: "page_id is required" });
     }
-    const page = await notionApi.getPage(pageId);
+    const page = notionApi.getPage(pageId);
     return JSON.stringify({
      ...formatPageSummary(page),
      properties: page.properties
@@ -2579,7 +2760,7 @@ var __skill_bundle = (() => {
    },
    required: ["page_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageId = args.page_id || "";
     const recursive = args.recursive === "true";
@@ -2587,13 +2768,13 @@ var __skill_bundle = (() => {
     if (!pageId) {
      return JSON.stringify({ error: "page_id is required" });
     }
-    const result = await notionApi.getPageContent(pageId, pageSize);
+    const result = notionApi.getPageContent(pageId, pageSize);
     const blocks = [];
     for (const block of result.results) {
      const summary = formatBlockSummary(block);
      let children = [];
      if (recursive && block.object === "block") {
-      const childrenResult = await notionApi.getBlockChildren(block.id, 50);
+      const childrenResult = notionApi.getBlockChildren(block.id, 50);
       children = childrenResult.results.map((c) => formatBlockSummary(c));
      }
      blocks.push({ ...summary, children: children.length > 0 ? children : void 0 });
@@ -2619,13 +2800,13 @@ var __skill_bundle = (() => {
    properties: { user_id: { type: "string", description: "The user ID" } },
    required: ["user_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const userId = args.user_id || "";
     if (!userId) {
      return JSON.stringify({ error: "user_id is required" });
     }
-    const user = await notionApi.getUser(userId);
+    const user = notionApi.getUser(userId);
     const summary = formatUserSummary(user);
     return JSON.stringify(summary);
    } catch (e) {
@@ -2635,22 +2816,61 @@ var __skill_bundle = (() => {
   }
  };
 
+ // skills-ts-out/core/notion/tools/cache.js
+ var CACHE_MAX_AGE_MS = 3 * 60 * 60 * 1e3;
+ function isCacheFresh() {
+  const s = getNotionSkillState2();
+  const lastSync = s.syncStatus.lastSyncTime;
+  if (!lastSync)
+   return false;
+  return Date.now() - lastSync < CACHE_MAX_AGE_MS;
+ }
+
  // skills-ts-out/core/notion/tools/list-all-databases.js
- var listAllDatabasesTool = {
-  name: "list-all-databases",
-  description: "List all databases in the workspace that the integration has access to.",
+ var listDatabasesTool = {
+  name: "list-databases",
+  description: "List databases in the workspace. Returns one page of results. Set tryCache=true to use locally synced databases when available (faster).",
   input_schema: {
    type: "object",
    properties: {
-    page_size: { type: "number", description: "Number of results (default 20, max 100)" }
+    page_size: { type: "number", description: "Number of results (default 20, max 100)" },
+    tryCache: {
+     type: "boolean",
+     description: "If true, return locally cached databases when cache is fresh (synced within 3 hours)"
+    }
    }
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageSize = Math.min(args.page_size || 20, 100);
-    const result = await notionApi.listAllDatabases(pageSize);
+    const tryCache = args.tryCache === true;
+    if (tryCache && isCacheFresh()) {
+     const localDbs = getLocalDatabases({ limit: pageSize });
+     if (localDbs.length > 0) {
+      const databases2 = localDbs.map((d) => ({
+       id: d.id,
+       title: d.title,
+       url: d.url,
+       created_time: d.created_time,
+       last_edited_time: d.last_edited_time,
+       property_count: d.property_count
+      }));
+      return JSON.stringify({
+       count: databases2.length,
+       has_more: localDbs.length >= pageSize,
+       databases: databases2,
+       source: "cache"
+      });
+     }
+    }
+    const result = notionApi.listAllDatabases(pageSize);
     const databases = result.results.map((item) => formatDatabaseSummary(item));
-    return JSON.stringify({ count: databases.length, has_more: result.has_more, databases });
+    return JSON.stringify({
+     count: databases.length,
+     has_more: result.has_more,
+     databases,
+     source: "api"
+    });
    } catch (e) {
     return JSON.stringify({ error: formatApiError(e) });
    }
@@ -2658,42 +2878,60 @@ var __skill_bundle = (() => {
  };
 
  // skills-ts-out/core/notion/tools/list-all-pages.js
- function formatLocalPageSummary(p) {
-  return {
-   id: p.id,
-   title: p.title,
-   url: p.url,
-   created_time: p.created_time,
-   last_edited_time: p.last_edited_time,
-   archived: !!p.archived,
-   parent_type: p.parent_type
-  };
- }
- var listAllPagesTool = {
-  name: "list-all-pages",
-  description: "List pages in the workspace (from last sync). Returns synced pages; run a sync in Settings to refresh.",
+ var listPagesTool = {
+  name: "list-pages",
+  description: "List pages in the workspace. Returns one page of results. Set tryCache=true to use locally synced pages when available (faster).",
   input_schema: {
    type: "object",
    properties: {
     page_size: {
      type: "number",
      description: "Number of results to return (default 20, max 100)"
+    },
+    tryCache: {
+     type: "boolean",
+     description: "If true, return locally cached pages when cache is fresh (synced within 3 hours)"
     }
    }
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageSize = Math.min(args.page_size || 20, 100);
-    const localPages = getLocalPages({ limit: pageSize, includeArchived: false });
-    const pages = localPages.map((p) => formatLocalPageSummary(p));
+    const tryCache = args.tryCache === true;
+    if (tryCache && isCacheFresh()) {
+     const localPages = getLocalPages({ limit: pageSize, includeArchived: false });
+     if (localPages.length > 0) {
+      const pages2 = localPages.map((p) => ({
+       id: p.id,
+       title: p.title,
+       url: p.url,
+       created_time: p.created_time,
+       last_edited_time: p.last_edited_time,
+       archived: !!p.archived,
+       parent_type: p.parent_type
+      }));
+      return JSON.stringify({
+       count: pages2.length,
+       has_more: localPages.length >= pageSize,
+       pages: pages2,
+       source: "cache"
+      });
+     }
+    }
+    const result = notionApi.search({
+     filter: { property: "object", value: "page" },
+     sort: { direction: "descending", timestamp: "last_edited_time" },
+     page_size: pageSize
+    });
+    const pages = result.results.map(formatPageSummary);
     return JSON.stringify({
      count: pages.length,
-     has_more: localPages.length >= pageSize,
+     has_more: result.has_more,
      pages,
-     source: "local"
+     source: "api"
     });
    } catch (e) {
-    return JSON.stringify({ error: e instanceof Error ? e.message : String(e) });
+    return JSON.stringify({ error: formatApiError(e) });
    }
   }
  };
@@ -2710,14 +2948,14 @@ var __skill_bundle = (() => {
    },
    required: ["block_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || "";
     const pageSize = Math.min(args.page_size || 20, 100);
     if (!blockId) {
      return JSON.stringify({ error: "block_id is required" });
     }
-    const result = await notionApi.listComments(blockId, pageSize);
+    const result = notionApi.listComments(blockId, pageSize);
     const comments = result.results.map((comment) => {
      const commentRec = comment;
      return {
@@ -2738,19 +2976,42 @@ var __skill_bundle = (() => {
  // skills-ts-out/core/notion/tools/list-users.js
  var listUsersTool = {
   name: "list-users",
-  description: "List all users in the workspace that the integration can see.",
+  description: "List users in the workspace. Returns one page of results (up to 100). Set tryCache=true to use locally synced users when available (faster).",
   input_schema: {
    type: "object",
    properties: {
-    page_size: { type: "number", description: "Number of results (default 20, max 100)" }
+    page_size: { type: "number", description: "Number of results (default 100, max 100)" },
+    tryCache: {
+     type: "boolean",
+     description: "If true, return locally cached users when cache is fresh (synced within 3 hours)"
+    }
    }
   },
-  async execute(args) {
+  execute(args) {
    try {
-    const pageSize = Math.min(args.page_size || 20, 100);
-    const result = await notionApi.listUsers(pageSize);
+    const pageSize = Math.min(args.page_size || 100, 100);
+    const tryCache = args.tryCache === true;
+    if (tryCache && isCacheFresh()) {
+     const localUsers = getLocalUsers();
+     if (localUsers.length > 0) {
+      const users2 = localUsers.map((u) => ({
+       id: u.id,
+       name: u.name,
+       email: u.email,
+       type: u.user_type,
+       avatar_url: u.avatar_url
+      }));
+      return JSON.stringify({ count: users2.length, users: users2, source: "cache" });
+     }
+    }
+    const result = notionApi.listUsers(pageSize);
     const users = result.results.map((u) => formatUserSummary(u));
-    return JSON.stringify({ count: users.length, has_more: result.has_more, users });
+    return JSON.stringify({
+     count: users.length,
+     has_more: result.has_more,
+     users,
+     source: "api"
+    });
    } catch (e) {
     return JSON.stringify({ error: formatApiError(e) });
    }
@@ -2760,14 +3021,11 @@ var __skill_bundle = (() => {
  // skills-ts-out/core/notion/tools/query-database.js
  var queryDatabaseTool = {
   name: "query-database",
-  description: "Query a database with optional filters and sorts. Returns database rows/pages. Automatically handles API version compatibility.",
+  description: "Query a database with optional filters and sorts. Returns database rows/pages.",
   input_schema: {
    type: "object",
    properties: {
-    database_id: {
-     type: "string",
-     description: "The database ID to query. Can be either a legacy database ID or a new data source ID - the tool will handle both automatically"
-    },
+    database_id: { type: "string", description: "The database ID to query" },
     filter: {
      type: "string",
      description: "JSON string of filter object (Notion filter syntax)"
@@ -2777,7 +3035,7 @@ var __skill_bundle = (() => {
    },
    required: ["database_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const databaseId = args.database_id || "";
     const filterJson = args.filter;
@@ -2801,67 +3059,43 @@ var __skill_bundle = (() => {
       return JSON.stringify({ error: "Invalid sorts JSON" });
      }
     }
-    const result = await notionApi.queryDataSource(databaseId, body);
+    const result = notionApi.queryDataSource(databaseId, body);
     const rows = result.results.map((page) => {
      return { ...formatPageSummary(page), properties: page.properties };
     });
-    const metadata = {
-     count: rows.length,
-     has_more: result.has_more,
-     rows
-    };
-    const supportsMultiSource = await supportsMultiSourceDatabases();
-    if (supportsMultiSource) {
-     metadata._api_info = {
-      version: "2025-09-03",
-      supports_multi_source: true,
-      note: "Using enhanced API with data source support"
-     };
-    }
-    return JSON.stringify(metadata);
+    return JSON.stringify({ count: rows.length, has_more: result.has_more, rows });
    } catch (e) {
     const error = formatApiError(e);
     console.error(`[notion][query-database] Error querying database ${args.database_id}:`, e);
-    return JSON.stringify({
-     error,
-     database_id: args.database_id,
-     troubleshooting: {
-      common_solutions: [
-       "Ensure the database is shared with your Notion integration",
-       "Check that the database_id is correct",
-       "Verify your integration has the necessary permissions",
-       "If using a new database, it may need time to sync with the API"
-      ],
-      api_transition_note: "This tool automatically handles both legacy and new API versions"
-     }
-    });
+    return JSON.stringify({ error, database_id: args.database_id });
    }
   }
  };
 
  // skills-ts-out/core/notion/tools/search.js
  function toSearchResultItem(item) {
+  const inTrashVal = item.in_trash !== void 0 && item.in_trash !== null ? item.in_trash : item.archived !== void 0 && item.archived !== null ? item.archived : false;
   const base = {
    object: item.object,
    id: item.id,
    created_time: item.created_time,
    last_edited_time: item.last_edited_time,
-   in_trash: item.in_trash ?? item.archived ?? false,
-   is_locked: item.is_locked ?? false,
-   url: item.url ?? null,
-   public_url: item.public_url ?? null,
-   parent: item.parent ?? null,
-   properties: item.properties ?? {},
-   icon: item.icon ?? null,
-   cover: item.cover ?? null,
-   created_by: item.created_by ?? null,
-   last_edited_by: item.last_edited_by ?? null
+   in_trash: inTrashVal,
+   is_locked: item.is_locked !== void 0 && item.is_locked !== null ? item.is_locked : false,
+   url: item.url !== void 0 && item.url !== null ? item.url : null,
+   public_url: item.public_url !== void 0 && item.public_url !== null ? item.public_url : null,
+   parent: item.parent !== void 0 && item.parent !== null ? item.parent : null,
+   properties: item.properties !== void 0 && item.properties !== null ? item.properties : {},
+   icon: item.icon !== void 0 && item.icon !== null ? item.icon : null,
+   cover: item.cover !== void 0 && item.cover !== null ? item.cover : null,
+   created_by: item.created_by !== void 0 && item.created_by !== null ? item.created_by : null,
+   last_edited_by: item.last_edited_by !== void 0 && item.last_edited_by !== null ? item.last_edited_by : null
   };
   if (item.object === "page") {
    return { ...base, title: formatPageTitle(item) };
   }
   if (item.object === "database" || item.object === "data_source") {
-   const title = Array.isArray(item.title) && item.title.length ? item.title.map((t) => t.plain_text ?? "").join("") : "(Untitled)";
+   const title = Array.isArray(item.title) && item.title.length ? item.title.map((t) => t.plain_text || "").join("") : "(Untitled)";
    return { ...base, title };
   }
   return base;
@@ -2875,8 +3109,8 @@ var __skill_bundle = (() => {
     query: { type: "string", description: "Search query (optional, returns recent if empty)" },
     filter: {
      type: "string",
-     enum: ["page", "database"],
-     description: "Filter results by type: page or database"
+     enum: ["page", "database", "data_source"],
+     description: "Filter results by type: page or database (data_source)"
     },
     sort_direction: {
      type: "string",
@@ -2889,7 +3123,7 @@ var __skill_bundle = (() => {
     }
    }
   },
-  async execute(args) {
+  execute(args) {
    try {
     const query = (args.query || "").trim();
     const filter = args.filter;
@@ -2899,18 +3133,20 @@ var __skill_bundle = (() => {
     if (query)
      body.query = query;
     if (filter) {
-     body.filter = { property: "object", value: filter === "database" ? "database" : "page" };
+     const filterValue = filter === "database" || filter === "data_source" ? "data_source" : "page";
+     body.filter = { property: "object", value: filterValue };
     }
     body.sort = {
      direction: sortDirection === "ascending" ? "ascending" : "descending",
      timestamp: "last_edited_time"
     };
-    const result = await notionApi.search(body);
+    const result = notionApi.search(body);
     const results = result.results.map(toSearchResultItem);
+    const resultRec = result;
     return JSON.stringify({
-     object: result.object ?? "list",
-     next_cursor: result.next_cursor ?? null,
-     has_more: result.has_more ?? false,
+     object: resultRec.object !== void 0 && resultRec.object !== null ? resultRec.object : "list",
+     next_cursor: resultRec.next_cursor !== void 0 && resultRec.next_cursor !== null ? resultRec.next_cursor : null,
+     has_more: result.has_more !== void 0 && result.has_more !== null ? result.has_more : false,
      results
     });
    } catch (e) {
@@ -2924,7 +3160,7 @@ var __skill_bundle = (() => {
   name: "summarize-pages",
   description: "AI summarization of Notion pages is now handled by the backend server. Synced page content is submitted to the server which runs summarization.",
   input_schema: { type: "object", properties: {} },
-  async execute() {
+  execute() {
    return JSON.stringify({
     success: false,
     error: "AI summarization has been moved to the backend server. Page content is synced and summaries are generated server-side."
@@ -2937,7 +3173,7 @@ var __skill_bundle = (() => {
   name: "sync-now",
   description: "Trigger an immediate Notion sync to refresh local data. Returns sync results including counts of synced pages and databases.",
   input_schema: { type: "object", properties: {} },
-  async execute() {
+  execute() {
    try {
     const s = getNotionSkillState2();
     if (!oauth.getCredential()) {
@@ -2958,7 +3194,7 @@ var __skill_bundle = (() => {
     return JSON.stringify({
      success: !s.syncStatus.lastSyncError,
      duration_ms: s.syncStatus.lastSyncDurationMs,
-     last_sync_time: new Date(s.syncStatus.lastSyncTime).toISOString(),
+     last_sync_time: s.syncStatus.lastSyncTime ? new Date(s.syncStatus.lastSyncTime).toISOString() : null,
      error: s.syncStatus.lastSyncError,
      totals: {
       pages: s.syncStatus.totalPages,
@@ -2977,13 +3213,16 @@ var __skill_bundle = (() => {
   name: "sync-status",
   description: "Get the current Notion sync status including last sync time, total synced pages/databases, sync progress, and any errors.",
   input_schema: { type: "object", properties: {} },
-  async execute() {
+  execute() {
    try {
     const s = getNotionSkillState2();
     return JSON.stringify({
      connected: !!oauth.getCredential(),
      workspace_name: s.config.workspaceName || null,
      sync_in_progress: s.syncStatus.syncInProgress,
+     sync_phase: s.syncStatus.syncPhase,
+     sync_progress: s.syncStatus.syncProgress,
+     sync_message: s.syncStatus.syncMessage,
      last_sync_time: s.syncStatus.lastSyncTime ? new Date(s.syncStatus.lastSyncTime).toISOString() : null,
      next_sync_time: s.syncStatus.nextSyncTime ? new Date(s.syncStatus.nextSyncTime).toISOString() : null,
      last_sync_duration_ms: s.syncStatus.lastSyncDurationMs,
@@ -3029,7 +3268,7 @@ var __skill_bundle = (() => {
    },
    required: ["block_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const blockId = args.block_id || "";
     const contentJson = args.content;
@@ -3052,7 +3291,7 @@ var __skill_bundle = (() => {
     if (Object.keys(body).length === 0) {
      return JSON.stringify({ error: "No updates specified" });
     }
-    const block = await notionApi.updateBlock(blockId, body);
+    const block = notionApi.updateBlock(blockId, body);
     return JSON.stringify({
      success: true,
      block: formatBlockSummary(block)
@@ -3076,7 +3315,7 @@ var __skill_bundle = (() => {
    },
    required: ["database_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const databaseId = args.database_id || "";
     const title = args.title;
@@ -3098,7 +3337,7 @@ var __skill_bundle = (() => {
     if (Object.keys(body).length === 0) {
      return JSON.stringify({ error: "No updates specified" });
     }
-    const dbResult = await notionApi.updateDatabase(databaseId, body);
+    const dbResult = notionApi.updateDatabase(databaseId, body);
     return JSON.stringify({
      success: true,
      database: formatDatabaseSummary(dbResult)
@@ -3127,7 +3366,7 @@ var __skill_bundle = (() => {
    },
    required: ["page_id"]
   },
-  async execute(args) {
+  execute(args) {
    try {
     const pageId = args.page_id || "";
     const title = args.title;
@@ -3155,7 +3394,7 @@ var __skill_bundle = (() => {
     if (Object.keys(body).length === 0) {
      return JSON.stringify({ error: "No updates specified" });
     }
-    const page = await notionApi.updatePage(pageId, body);
+    const page = notionApi.updatePage(pageId, body);
     return JSON.stringify({
      success: true,
      page: formatPageSummary(page)
@@ -3167,7 +3406,48 @@ var __skill_bundle = (() => {
  };
 
  // skills-ts-out/core/notion/tools/index.js
- var tools = [
+ function withLogging(tool) {
+  const originalExecute = tool.execute;
+  const toolName = tool.name;
+  return {
+   ...tool,
+   execute(args) {
+    const argKeys = Object.keys(args || {});
+    const argSummary = argKeys.length > 0 ? argKeys.map((k) => {
+     const v = args[k];
+     if (typeof v === "string")
+      return `${k}=<${v.length} chars>`;
+     if (Array.isArray(v))
+      return `${k}=<array ${v.length}>`;
+     if (v && typeof v === "object")
+      return `${k}=<object>`;
+     return `${k}=${JSON.stringify(v)}`;
+    }).join(", ") : "(none)";
+    console.log(`[notion][tool:${toolName}] called with ${argSummary}`);
+    const t0 = Date.now();
+    try {
+     const text = originalExecute.call(this, args);
+     const ms = Date.now() - t0;
+     const len = text ? text.length : 0;
+     let errMsg = "";
+     try {
+      const parsed = JSON.parse(text);
+      if (parsed.error)
+       errMsg = ` error="${String(parsed.error).slice(0, 100)}"`;
+     } catch {
+     }
+     console.log(`[notion][tool:${toolName}] OK ${ms}ms (${len}b)${errMsg}`);
+     return text;
+    } catch (e) {
+     const ms = Date.now() - t0;
+     const msg = e instanceof Error ? e.message : String(e);
+     console.error(`[notion][tool:${toolName}] FAILED ${ms}ms: ${msg}`);
+     throw e;
+    }
+   }
+  };
+ }
+ var rawTools = [
   appendBlocksTool,
   appendTextTool,
   createCommentTool,
@@ -3181,8 +3461,8 @@ var __skill_bundle = (() => {
   getPageTool,
   getPageContentTool,
   getUserTool,
-  listAllDatabasesTool,
-  listAllPagesTool,
+  listDatabasesTool,
+  listPagesTool,
   listCommentsTool,
   listUsersTool,
   queryDatabaseTool,
@@ -3194,10 +3474,11 @@ var __skill_bundle = (() => {
   updateDatabaseTool,
   updatePageTool
  ];
+ var tools = rawTools.map(withLogging);
  var tools_default = tools;
 
  // skills-ts-out/core/notion/index.js
- async function init() {
+ function init() {
   console.log("[notion] Initializing");
   const s = getNotionSkillState2();
   initializeNotionSchema();
@@ -3206,7 +3487,7 @@ var __skill_bundle = (() => {
    s.config.credentialId = saved.credentialId || s.config.credentialId;
    s.config.workspaceName = saved.workspaceName || s.config.workspaceName;
    s.config.syncIntervalMinutes = saved.syncIntervalMinutes || s.config.syncIntervalMinutes;
-   s.config.contentSyncEnabled = saved.contentSyncEnabled ?? s.config.contentSyncEnabled;
+   s.config.contentSyncEnabled = saved.contentSyncEnabled !== void 0 && saved.contentSyncEnabled !== null ? saved.contentSyncEnabled : s.config.contentSyncEnabled;
    s.config.maxPagesPerContentSync = saved.maxPagesPerContentSync || s.config.maxPagesPerContentSync;
   }
   const lastSync = state.get("lastSyncTime");
@@ -3230,7 +3511,7 @@ var __skill_bundle = (() => {
   }
   publishState();
  }
- async function start() {
+ function start() {
   const s = getNotionSkillState2();
   if (!isNotionConnected()) {
    console.log("[notion] No credential \u2014 skill inactive until auth completes");
@@ -3240,7 +3521,7 @@ var __skill_bundle = (() => {
   cron.register("notion-sync", cronExpr);
   console.log(`[notion] Scheduled sync every ${s.config.syncIntervalMinutes} minutes`);
  }
- async function stop() {
+ function stop() {
   console.log("[notion] Stopping");
   const s = getNotionSkillState2();
   cron.unregister("notion-sync");
@@ -3248,24 +3529,24 @@ var __skill_bundle = (() => {
   state.set("status", "stopped");
   console.log("[notion] Stopped");
  }
- async function onCronTrigger(scheduleId) {
+ function onCronTrigger(scheduleId) {
   console.log(`[notion] Cron triggered: ${scheduleId}`);
   if (scheduleId === "notion-sync") {
    performSync();
   }
  }
- async function onSessionStart(args) {
+ function onSessionStart(args) {
   const s = getNotionSkillState2();
   s.activeSessions.push(args.sessionId);
  }
- async function onSessionEnd(args) {
+ function onSessionEnd(args) {
   const s = getNotionSkillState2();
   const index = s.activeSessions.indexOf(args.sessionId);
   if (index > -1) {
    s.activeSessions.splice(index, 1);
   }
  }
- async function onOAuthComplete(args) {
+ function onOAuthComplete(args) {
   const s = getNotionSkillState2();
   s.config.credentialId = args.credentialId;
   console.log(`[notion] OAuth complete \u2014 credential: ${args.credentialId}, account: ${args.accountLabel || "(unknown)"}`);
@@ -3277,7 +3558,7 @@ var __skill_bundle = (() => {
   cron.register("notion-sync", cronExpr);
   publishState();
  }
- async function onOAuthRevoked(args) {
+ function onOAuthRevoked(args) {
   console.log(`[notion] OAuth revoked \u2014 reason: ${args.reason}`);
   const s = getNotionSkillState2();
   s.config.credentialId = "";
@@ -3286,7 +3567,7 @@ var __skill_bundle = (() => {
   cron.unregister("notion-sync");
   publishState();
  }
- async function onDisconnect() {
+ function onDisconnect() {
   console.log("[notion] Disconnecting");
   const s = getNotionSkillState2();
   oauth.revoke();
@@ -3296,23 +3577,23 @@ var __skill_bundle = (() => {
   cron.unregister("notion-sync");
   publishState();
  }
- async function onAuthComplete(args) {
+ function onAuthComplete(args) {
   console.log(`[notion] onAuthComplete \u2014 mode: ${args.mode}`);
   const s = getNotionSkillState2();
   if (args.mode === "managed") {
    return { status: "complete" };
   }
-  const token = args.credentials.api_token ?? args.credentials.content ?? args.credentials.access_token;
+  const token = args.credentials.api_token || args.credentials.content || args.credentials.access_token;
   if (!token) {
    return { status: "error", errors: [{ field: "api_token", message: "API token is required." }] };
   }
   try {
-   const response = await net.fetch("https://api.notion.com/v1/users?page_size=1", {
+   const response = net.fetch("https://api.notion.com/v1/users/me", {
     method: "GET",
     headers: {
      Authorization: `Bearer ${token}`,
      "Content-Type": "application/json",
-     "Notion-Version": "2022-06-28"
+     "Notion-Version": "2026-03-11"
     },
     timeout: 15
    });
@@ -3340,8 +3621,8 @@ var __skill_bundle = (() => {
    }
    try {
     const data = JSON.parse(response.body);
-    const botUser = data.results?.find((u) => u.type === "bot");
-    if (botUser?.name) {
+    const botUser = data.results ? data.results.find((u) => u.type === "bot") : void 0;
+    if (botUser && botUser.name) {
      s.config.workspaceName = botUser.name;
     }
    } catch {
@@ -3353,13 +3634,12 @@ var __skill_bundle = (() => {
    };
   }
   state.set("config", s.config);
-  resetApiVersionCache();
   const cronExpr = `0 */${s.config.syncIntervalMinutes} * * * *`;
   cron.register("notion-sync", cronExpr);
   publishState();
   return { status: "complete", message: "Connected to Notion!" };
  }
- async function onAuthRevoked(args) {
+ function onAuthRevoked(args) {
   console.log(`[notion] Auth revoked \u2014 mode: ${args.mode || "unknown"}`);
   const s = getNotionSkillState2();
   s.config.credentialId = "";
@@ -3367,10 +3647,9 @@ var __skill_bundle = (() => {
   state.setPartial({ profile: null });
   state.delete("config");
   cron.unregister("notion-sync");
-  resetApiVersionCache();
   publishState();
  }
- async function onSetupStart() {
+ function onSetupStart() {
   return {
    step: {
     id: "auth_done",
@@ -3380,13 +3659,13 @@ var __skill_bundle = (() => {
    }
   };
  }
- async function onSetupSubmit(_args) {
+ function onSetupSubmit(_args) {
   return { status: "complete" };
  }
- async function onSync() {
+ function onSync() {
   console.log("[notion] Syncing");
   try {
-   const user = await notionApi.getUser("me");
+   const user = notionApi.getUser("me");
    const profile = formatUserSummary(user);
    state.setPartial({ profile });
   } catch (e) {
@@ -3395,7 +3674,7 @@ var __skill_bundle = (() => {
   publishState();
   performSync();
  }
- async function onListOptions() {
+ function onListOptions() {
   const s = getNotionSkillState2();
   return {
    options: [
@@ -3431,7 +3710,7 @@ var __skill_bundle = (() => {
    ]
   };
  }
- async function onSetOption(args) {
+ function onSetOption(args) {
   const s = getNotionSkillState2();
   switch (args.name) {
    case "syncInterval":
@@ -3452,7 +3731,7 @@ var __skill_bundle = (() => {
   state.set("config", s.config);
   publishState();
  }
- async function publishState() {
+ function publishState() {
   const s = getNotionSkillState2();
   const isConnected = isNotionConnected();
   let pages = [];
@@ -3463,8 +3742,7 @@ var __skill_bundle = (() => {
      id: p.id,
      title: p.title,
      url: p.url,
-     last_edited_time: p.last_edited_time,
-     content_text: p.content_text
+     last_edited_time: p.last_edited_time
     }));
    } catch (e) {
     console.error("[notion] publishState: failed to load local pages:", e);
@@ -3490,22 +3768,12 @@ var __skill_bundle = (() => {
    pages
   });
  }
- async function onPing() {
+ function onPing() {
   if (!isNotionConnected()) {
    return { ok: false, errorType: "auth", errorMessage: "No credential" };
   }
-  try {
-   await notionFetch("/users?page_size=1");
-   console.log("[notion] onPing: ok");
-   return { ok: true };
-  } catch (err) {
-   const msg = String(err);
-   console.warn("[notion] onPing error:", msg);
-   if (msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("unauthorized")) {
-    return { ok: false, errorType: "auth", errorMessage: msg };
-   }
-   return { ok: false, errorType: "network", errorMessage: msg };
-  }
+  console.log("[notion] onPing: ok (credential present)");
+  return { ok: true };
  }
  var skill = {
   info: {
