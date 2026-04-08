@@ -17,7 +17,6 @@ function sleep(ms: number): void {
   }
 }
 
-
 /** Returns true if any form of Gmail credential is available. */
 export function isGmailConnected(): boolean {
   const authCred = auth.getCredential();

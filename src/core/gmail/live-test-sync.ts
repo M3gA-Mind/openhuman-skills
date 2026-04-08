@@ -163,12 +163,7 @@ const GRANTED_SCOPES = [
 
 type ResolvedCreds =
   | { mode: 'encrypted_oauth'; integrationId: string; clientKeyShare: string }
-  | {
-      mode: 'self_hosted';
-      clientId: string;
-      clientSecret: string;
-      refreshToken: string;
-    };
+  | { mode: 'self_hosted'; clientId: string; clientSecret: string; refreshToken: string };
 
 /** Resolve JWT (required), then OAuth env or interactive — mirrors live-test.ts */
 async function resolveCredentials(): Promise<ResolvedCreds> {
@@ -247,9 +242,7 @@ async function resolveCredentials(): Promise<ResolvedCreds> {
   header('OAuth Flow (browser)');
   step('Requesting OAuth URL from backend...');
   const connectUrl = `${BACKEND_URL}/auth/gmail/connect?skillId=gmail&responseType=json&encryptionMode=encrypted`;
-  const connectResp = await fetch(connectUrl, {
-    headers: { Authorization: `Bearer ${jwt}` },
-  });
+  const connectResp = await fetch(connectUrl, { headers: { Authorization: `Bearer ${jwt}` } });
   if (!connectResp.ok) {
     const text = await connectResp.text();
     console.log(`${C.red}✗ Backend returned ${connectResp.status}: ${text}${C.reset}`);
