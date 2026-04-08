@@ -2,10 +2,10 @@ import { getGmailSkillState } from '../state';
 import type { GmailProfile } from '../types';
 import { gmailFetch } from './index';
 
-export async function loadGmailProfile(): Promise<void> {
-  const response = await gmailFetch<GmailProfile>('/users/me/profile', { timeout: 10 });
+export function loadGmailProfile(): void {
+  const response = gmailFetch<GmailProfile>('/users/me/profile', { timeout: 10 });
   if (!response.success) {
-    throw new Error(response.error?.message || 'unknown error');
+    throw new Error((response.error && response.error.message) || 'unknown error');
   }
   if (response.success) {
     const s = getGmailSkillState();

@@ -6,13 +6,10 @@ import type {
 
 import { apiFetch } from './client';
 
-export function createComment(body: Record<string, unknown>): Promise<CreateCommentResponse> {
+export function createComment(body: Record<string, unknown>): CreateCommentResponse {
   return apiFetch<CreateCommentResponse>('/comments', { method: 'POST', body });
 }
 
-export function listComments(
-  blockId: string,
-  pageSize: number = 20
-): Promise<ListCommentsResponse> {
+export function listComments(blockId: string, pageSize: number = 20): ListCommentsResponse {
   return apiFetch<ListCommentsResponse>(`/comments?block_id=${blockId}&page_size=${pageSize}`);
 }

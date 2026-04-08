@@ -8,7 +8,7 @@ export const syncStatusTool: ToolDefinition = {
     'Get the current Notion sync status including last sync time, ' +
     'total synced pages/databases, sync progress, and any errors.',
   input_schema: { type: 'object', properties: {} },
-  async execute(): Promise<string> {
+  execute(): string {
     try {
       const s = getNotionSkillState();
 
@@ -16,6 +16,9 @@ export const syncStatusTool: ToolDefinition = {
         connected: !!oauth.getCredential(),
         workspace_name: s.config.workspaceName || null,
         sync_in_progress: s.syncStatus.syncInProgress,
+        sync_phase: s.syncStatus.syncPhase,
+        sync_progress: s.syncStatus.syncProgress,
+        sync_message: s.syncStatus.syncMessage,
         last_sync_time: s.syncStatus.lastSyncTime
           ? new Date(s.syncStatus.lastSyncTime).toISOString()
           : null,

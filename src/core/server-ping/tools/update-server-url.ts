@@ -9,8 +9,8 @@ export const updateServerUrlTool: ToolDefinition = {
     properties: { url: { type: 'string', description: 'New server URL to monitor' } },
     required: ['url'],
   },
-  async execute(args: Record<string, unknown>): Promise<string> {
-    const url = ((args.url as string) ?? '').trim();
+  execute(args: Record<string, unknown>): string {
+    const url = ((args.url as string) || '').trim();
     if (!url || !url.startsWith('http')) {
       return JSON.stringify({ error: 'Invalid URL — must start with http:// or https://' });
     }
@@ -22,7 +22,8 @@ export const updateServerUrlTool: ToolDefinition = {
 
     console.log(`[server-ping] Server URL changed: ${oldUrl} -> ${url}`);
     // publishState is exposed on globalThis by the main skill module
-    (globalThis as { publishState?: () => void }).publishState?.();
+    const _g = globalThis as { publishState?: () => void };
+    if (_g.publishState) _g.publishState();
 
     return JSON.stringify({ success: true, oldUrl, newUrl: url });
   },

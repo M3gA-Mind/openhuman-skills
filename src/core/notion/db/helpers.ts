@@ -19,7 +19,7 @@ export interface LocalPage {
   content_text: string | null;
   content_synced_at: number | null;
   page_entities: string | null;
-  backend_submitted: number;
+  ingested: number;
   synced_at: number;
 }
 
@@ -37,7 +37,7 @@ export interface LocalDatabaseRow {
   created_time: string;
   last_edited_time: string;
   archived: number;
-  backend_submitted: number;
+  ingested: number;
   synced_at: number;
 }
 
@@ -52,7 +52,7 @@ export interface LocalDatabase {
   created_time: string;
   last_edited_time: string;
   archived: number;
-  backend_submitted: number;
+  ingested: number;
   synced_at: number;
 }
 
@@ -83,8 +83,14 @@ function extractIcon(icon: unknown): string | null {
   if (!icon) return null;
   const iconObj = icon as Record<string, unknown>;
   if (iconObj.type === 'emoji') return iconObj.emoji as string;
-  if (iconObj.type === 'external') return (iconObj.external as Record<string, string>)?.url || null;
-  if (iconObj.type === 'file') return (iconObj.file as Record<string, string>)?.url || null;
+  if (iconObj.type === 'external') {
+    const ext = iconObj.external as Record<string, string> | undefined;
+    return (ext ? ext.url : null) || null;
+  }
+  if (iconObj.type === 'file') {
+    const file = iconObj.file as Record<string, string> | undefined;
+    return (file ? file.url : null) || null;
+  }
   return null;
 }
 
@@ -137,11 +143,11 @@ function extractPageEntities(
 
   // Top-level created_by / last_edited_by
   const createdBy = page.created_by as Record<string, unknown> | undefined;
-  if (createdBy?.id) {
+  if (createdBy && createdBy.id) {
     add(createdBy.id as string, 'person', createdBy.name as string | undefined, 'creator');
   }
   const lastEditedBy = page.last_edited_by as Record<string, unknown> | undefined;
-  if (lastEditedBy?.id) {
+  if (lastEditedBy && lastEditedBy.id) {
     add(
       lastEditedBy.id as string,
       'person',
@@ -243,7 +249,7 @@ export function upsertPage(page: Record<string, unknown>): void {
       last_edited_time = excluded.last_edited_time,
       archived = excluded.archived,
       page_entities = excluded.page_entities,
-      backend_submitted = 0,
+      ingested = 0,
       synced_at = excluded.synced_at`,
     [
       page.id as string,
@@ -253,8 +259,8 @@ export function upsertPage(page: Record<string, unknown>): void {
       iconStr,
       parent.type,
       parent.id,
-      (createdBy?.id as string) || null,
-      (lastEditedBy?.id as string) || null,
+      ((createdBy ? createdBy.id : null) as string) || null,
+      ((lastEditedBy ? lastEditedBy.id : null) as string) || null,
       page.created_time as string,
       page.last_edited_time as string,
       (page.archived as boolean) ? 1 : 0,
@@ -265,13 +271,13 @@ export function upsertPage(page: Record<string, unknown>): void {
 }
 
 /**
- * Update a page's extracted content text and reset backend_submitted
+ * Update a page's extracted content text and reset ingested
  * so the updated content gets re-submitted.
  */
 export function updatePageContent(pageId: string, contentText: string): void {
   const cid = credId();
   db.exec(
-    'UPDATE pages SET content_text = ?, content_synced_at = ?, backend_submitted = 0 WHERE credential_id = ? AND id = ?',
+    'UPDATE pages SET content_text = ?, content_synced_at = ?, ingested = 0 WHERE credential_id = ? AND id = ?',
     [contentText, Date.now(), cid, pageId]
   );
 }
@@ -686,9 +692,9 @@ export function getSummaryCounts(): { total: number; synced: number; pending: nu
     [cid]
   ) as { cnt: number } | null;
   return {
-    total: total?.cnt || 0,
-    synced: synced?.cnt || 0,
-    pending: (total?.cnt || 0) - (synced?.cnt || 0),
+    total: (total ? total.cnt : 0) || 0,
+    synced: (synced ? synced.cnt : 0) || 0,
+    pending: ((total ? total.cnt : 0) || 0) - ((synced ? synced.cnt : 0) || 0),
   };
 }
 
@@ -736,7 +742,7 @@ export function upsertDatabase(database: Record<string, unknown>): void {
       created_time = excluded.created_time,
       last_edited_time = excluded.last_edited_time,
       archived = excluded.archived,
-      backend_submitted = 0,
+      ingested = 0,
       synced_at = excluded.synced_at`,
     [
       database.id as string,
@@ -822,7 +828,7 @@ function extractPropertiesText(properties: Record<string, unknown>): string {
       }
       case 'select': {
         const sel = prop.select as Record<string, unknown> | null;
-        if (sel?.name) parts.push(sel.name as string);
+        if (sel && sel.name) parts.push(sel.name as string);
         break;
       }
       case 'multi_select': {
@@ -836,13 +842,13 @@ function extractPropertiesText(properties: Record<string, unknown>): string {
       }
       case 'status': {
         const st = prop.status as Record<string, unknown> | null;
-        if (st?.name) parts.push(st.name as string);
+        if (st && st.name) parts.push(st.name as string);
         break;
       }
       case 'date': {
         const dt = prop.date as Record<string, unknown> | null;
-        if (dt?.start) parts.push(dt.start as string);
-        if (dt?.end) parts.push(dt.end as string);
+        if (dt && dt.start) parts.push(dt.start as string);
+        if (dt && dt.end) parts.push(dt.end as string);
         break;
       }
       case 'email': {
@@ -949,7 +955,7 @@ export function upsertDatabaseRow(row: Record<string, unknown>, databaseId: stri
       created_time = excluded.created_time,
       last_edited_time = excluded.last_edited_time,
       archived = excluded.archived,
-      backend_submitted = 0,
+      ingested = 0,
       synced_at = excluded.synced_at`,
     [
       row.id as string,
@@ -960,8 +966,8 @@ export function upsertDatabaseRow(row: Record<string, unknown>, databaseId: stri
       iconStr,
       propertiesJson,
       propertiesText,
-      (createdBy?.id as string) || null,
-      (lastEditedBy?.id as string) || null,
+      ((createdBy ? createdBy.id : null) as string) || null,
+      ((lastEditedBy ? lastEditedBy.id : null) as string) || null,
       row.created_time as string,
       row.last_edited_time as string,
       (row.archived as boolean) ? 1 : 0,
@@ -1036,7 +1042,7 @@ export function upsertUser(user: Record<string, unknown>): void {
       cid,
       (user.name as string) || '(Unknown)',
       (user.type as string) || 'person',
-      (person?.email as string) || null,
+      ((person ? person.email : null) as string) || null,
       (user.avatar_url as string) || null,
       now,
     ]
@@ -1058,15 +1064,14 @@ export function getLocalUsers(): LocalUser[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Get pages that have not yet been submitted to the backend.
- * Only returns non-archived pages with content. Oldest first for
- * chronological submission order.
+ * Get pages that have not yet been ingested into memory.
+ * Only returns non-archived pages with content. Oldest first.
  */
-export function getUnsubmittedPages(limit = 500): LocalPage[] {
+export function getUningestedPages(limit = 500): LocalPage[] {
   const cid = credId();
   return db.all(
     `SELECT * FROM pages
-     WHERE credential_id = ? AND backend_submitted = 0 AND archived = 0
+     WHERE credential_id = ? AND ingested = 0 AND archived = 0
        AND content_text IS NOT NULL
      ORDER BY last_edited_time ASC LIMIT ?`,
     [cid, limit]
@@ -1074,14 +1079,14 @@ export function getUnsubmittedPages(limit = 500): LocalPage[] {
 }
 
 /**
- * Get database rows that have not yet been submitted to the backend.
+ * Get database rows that have not yet been ingested into memory.
  * Only returns non-archived rows with text content. Oldest first.
  */
-export function getUnsubmittedRows(limit = 500): LocalDatabaseRow[] {
+export function getUningestedRows(limit = 500): LocalDatabaseRow[] {
   const cid = credId();
   return db.all(
     `SELECT * FROM database_rows
-     WHERE credential_id = ? AND backend_submitted = 0 AND archived = 0
+     WHERE credential_id = ? AND ingested = 0 AND archived = 0
        AND properties_text IS NOT NULL AND properties_text != ''
      ORDER BY last_edited_time ASC LIMIT ?`,
     [cid, limit]
@@ -1089,44 +1094,44 @@ export function getUnsubmittedRows(limit = 500): LocalDatabaseRow[] {
 }
 
 /**
- * Mark a batch of page IDs as submitted to the backend.
+ * Mark a batch of page IDs as ingested into memory.
  */
-export function markPagesSubmitted(ids: string[]): void {
+export function markPagesIngested(ids: string[]): void {
   if (ids.length === 0) return;
   const cid = credId();
   for (let i = 0; i < ids.length; i += 99) {
     const batch = ids.slice(i, i + 99);
     const placeholders = batch.map(() => '?').join(',');
-    db.exec(
-      `UPDATE pages SET backend_submitted = 1 WHERE credential_id = ? AND id IN (${placeholders})`,
-      [cid, ...batch]
-    );
+    db.exec(`UPDATE pages SET ingested = 1 WHERE credential_id = ? AND id IN (${placeholders})`, [
+      cid,
+      ...batch,
+    ]);
   }
 }
 
 /**
- * Mark a batch of database row IDs as submitted to the backend.
+ * Mark a batch of database row IDs as ingested into memory.
  */
-export function markRowsSubmitted(ids: string[]): void {
+export function markRowsIngested(ids: string[]): void {
   if (ids.length === 0) return;
   const cid = credId();
   for (let i = 0; i < ids.length; i += 99) {
     const batch = ids.slice(i, i + 99);
     const placeholders = batch.map(() => '?').join(',');
     db.exec(
-      `UPDATE database_rows SET backend_submitted = 1 WHERE credential_id = ? AND id IN (${placeholders})`,
+      `UPDATE database_rows SET ingested = 1 WHERE credential_id = ? AND id IN (${placeholders})`,
       [cid, ...batch]
     );
   }
 }
 
-// Register backend submission helpers on globalThis for bundled/IIFE/test harness access
+// Register ingestion helpers on globalThis for bundled/IIFE/test harness access
 if (typeof globalThis !== 'undefined') {
   const g = globalThis as Record<string, unknown>;
-  g.getUnsubmittedPages = getUnsubmittedPages;
-  g.getUnsubmittedRows = getUnsubmittedRows;
-  g.markPagesSubmitted = markPagesSubmitted;
-  g.markRowsSubmitted = markRowsSubmitted;
+  g.getUningestedPages = getUningestedPages;
+  g.getUningestedRows = getUningestedRows;
+  g.markPagesIngested = markPagesIngested;
+  g.markRowsIngested = markRowsIngested;
 }
 
 // ---------------------------------------------------------------------------
@@ -1172,12 +1177,12 @@ export function getEntityCounts(): {
   ) as { cnt: number } | null;
 
   return {
-    pages: pages?.cnt || 0,
-    databases: databases?.cnt || 0,
-    databaseRows: databaseRows?.cnt || 0,
-    pagesWithContent: pagesWithContent?.cnt || 0,
-    pagesWithSummary: pagesWithSummary?.cnt || 0,
-    summariesTotal: summariesTotal?.cnt || 0,
-    summariesPending: summariesPending?.cnt || 0,
+    pages: (pages ? pages.cnt : 0) || 0,
+    databases: (databases ? databases.cnt : 0) || 0,
+    databaseRows: (databaseRows ? databaseRows.cnt : 0) || 0,
+    pagesWithContent: (pagesWithContent ? pagesWithContent.cnt : 0) || 0,
+    pagesWithSummary: (pagesWithSummary ? pagesWithSummary.cnt : 0) || 0,
+    summariesTotal: (summariesTotal ? summariesTotal.cnt : 0) || 0,
+    summariesPending: (summariesPending ? summariesPending.cnt : 0) || 0,
   };
 }

@@ -13,7 +13,7 @@ import type { SkillConfig } from './types';
 // Lifecycle hooks
 // ---------------------------------------------------------------------------
 
-async function init(): Promise<void> {
+function init(): void {
   console.log(`[gmail] Initializing on ${platform.os()}`);
   const s = getGmailSkillState();
 
@@ -25,11 +25,15 @@ async function init(): Promise<void> {
   if (saved) {
     s.config.credentialId = saved.credentialId || s.config.credentialId;
     s.config.userEmail = saved.userEmail || s.config.userEmail;
-    s.config.syncEnabled = saved.syncEnabled ?? s.config.syncEnabled;
+    s.config.syncEnabled = saved.syncEnabled != null ? saved.syncEnabled : s.config.syncEnabled;
     s.config.syncIntervalMinutes = saved.syncIntervalMinutes || s.config.syncIntervalMinutes;
     s.config.maxEmailsPerSync = saved.maxEmailsPerSync || s.config.maxEmailsPerSync;
-    s.config.notifyOnNewEmails = saved.notifyOnNewEmails ?? s.config.notifyOnNewEmails;
-    s.config.showSensitiveMessages = saved.showSensitiveMessages ?? s.config.showSensitiveMessages;
+    s.config.notifyOnNewEmails =
+      saved.notifyOnNewEmails != null ? saved.notifyOnNewEmails : s.config.notifyOnNewEmails;
+    s.config.showSensitiveMessages =
+      saved.showSensitiveMessages != null
+        ? saved.showSensitiveMessages
+        : s.config.showSensitiveMessages;
   }
 
   // Load sync status from persistent state
@@ -43,7 +47,7 @@ async function init(): Promise<void> {
   console.log(`[gmail] Initialized. Connected: ${isConnected}`);
 }
 
-async function start(): Promise<void> {
+function start(): void {
   console.log('[gmail] Starting skill...');
   const s = getGmailSkillState();
   if (isGmailConnected() && s.config.syncEnabled) {
@@ -56,24 +60,24 @@ async function start(): Promise<void> {
   }
 }
 
-async function stop(): Promise<void> {
+function stop(): void {
   console.log('[gmail] Skill stopped');
 }
 
-async function onCronTrigger(scheduleId: string): Promise<void> {
+function onCronTrigger(scheduleId: string): void {
   console.log(`[gmail] Cron triggered: ${scheduleId}`);
   if (scheduleId === 'gmail-sync') {
-    await onSync();
+    onSync();
   }
 }
 
-async function onSessionStart(args: { sessionId: string }): Promise<void> {
+function onSessionStart(args: { sessionId: string }): void {
   const s = getGmailSkillState();
   s.activeSessions.push(args.sessionId);
   console.log(`[gmail] Session started: ${args.sessionId} (${s.activeSessions.length} active)`);
 }
 
-async function onSessionEnd(args: { sessionId: string }): Promise<void> {
+function onSessionEnd(args: { sessionId: string }): void {
   const s = getGmailSkillState();
   const index = s.activeSessions.indexOf(args.sessionId);
   if (index > -1) {
@@ -86,7 +90,7 @@ async function onSessionEnd(args: { sessionId: string }): Promise<void> {
 // OAuth lifecycle hooks
 // ---------------------------------------------------------------------------
 
-async function onOAuthComplete(args: OAuthCompleteArgs): Promise<OAuthCompleteResult | void> {
+function onOAuthComplete(args: OAuthCompleteArgs): OAuthCompleteResult | void {
   console.log(`[gmail] OAuth complete for provider: ${args.provider}`);
   const s = getGmailSkillState();
 
@@ -100,7 +104,7 @@ async function onOAuthComplete(args: OAuthCompleteArgs): Promise<OAuthCompleteRe
   publishSkillState();
 }
 
-async function onOAuthRevoked(args: OAuthRevokedArgs): Promise<void> {
+function onOAuthRevoked(args: OAuthRevokedArgs): void {
   console.log(`[gmail] OAuth revoked: ${args.reason}`);
   const s = getGmailSkillState();
 
@@ -117,7 +121,7 @@ async function onOAuthRevoked(args: OAuthRevokedArgs): Promise<void> {
   }
 }
 
-async function onDisconnect(): Promise<void> {
+function onDisconnect(): void {
   console.log('[gmail] Disconnecting...');
   const s = getGmailSkillState();
 
@@ -145,14 +149,11 @@ async function onDisconnect(): Promise<void> {
 // Advanced auth lifecycle (self_hosted / text modes)
 // ---------------------------------------------------------------------------
 
-async function onAuthComplete(args: {
-  mode: string;
-  credentials: Record<string, unknown>;
-}): Promise<{
+function onAuthComplete(args: { mode: string; credentials: Record<string, unknown> }): {
   status: string;
   errors?: Array<{ field: string; message: string }>;
   message?: string;
-}> {
+} {
   console.log(`[gmail] onAuthComplete — mode: ${args.mode}`);
   const s = getGmailSkillState();
 
@@ -178,7 +179,7 @@ async function onAuthComplete(args: {
     // Validate by exchanging refresh_token for access_token
     try {
       const body = `client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&refresh_token=${encodeURIComponent(refreshToken)}&grant_type=refresh_token`;
-      const response = await net.fetch('https://oauth2.googleapis.com/token', {
+      const response = net.fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
@@ -198,17 +199,14 @@ async function onAuthComplete(args: {
 
       // Token exchange succeeded — test Gmail API access
       const tokenData = JSON.parse(response.body) as { access_token: string };
-      const profileResp = await net.fetch(
-        'https://gmail.googleapis.com/gmail/v1/users/me/profile',
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${tokenData.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 10,
-        }
-      );
+      const profileResp = net.fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10,
+      });
 
       if (profileResp.status !== 200) {
         return {
@@ -241,7 +239,7 @@ async function onAuthComplete(args: {
   }
 
   if (args.mode === 'text') {
-    const content = (args.credentials.content ?? '') as string;
+    const content = (args.credentials.content || '') as string;
     if (!content.trim()) {
       return {
         status: 'error',
@@ -273,14 +271,11 @@ async function onAuthComplete(args: {
 
     // Test the token against Gmail
     try {
-      const profileResp = await net.fetch(
-        'https://gmail.googleapis.com/gmail/v1/users/me/profile',
-        {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          timeout: 10,
-        }
-      );
+      const profileResp = net.fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 10,
+      });
 
       if (profileResp.status === 401 || profileResp.status === 403) {
         return {
@@ -331,7 +326,7 @@ async function onAuthComplete(args: {
   return { status: 'complete', message: 'Connected to Gmail!' };
 }
 
-async function onAuthRevoked(args: { mode?: string }): Promise<void> {
+function onAuthRevoked(args: { mode?: string }): void {
   console.log(`[gmail] Auth revoked — mode: ${args.mode || 'unknown'}`);
   const s = getGmailSkillState();
 
@@ -348,7 +343,7 @@ async function onAuthRevoked(args: { mode?: string }): Promise<void> {
 // Setup compatibility stubs (required while validator expects onSetupStart/onSetupSubmit)
 // ---------------------------------------------------------------------------
 
-async function onSetupStart(): Promise<SetupStartResult> {
+function onSetupStart(): SetupStartResult {
   // Auth phase already handled credentials — return a pass-through step
   return {
     step: {
@@ -360,10 +355,10 @@ async function onSetupStart(): Promise<SetupStartResult> {
   };
 }
 
-async function onSetupSubmit(_args: {
+function onSetupSubmit(_args: {
   stepId: string;
   values: Record<string, unknown>;
-}): Promise<SetupSubmitResult> {
+}): SetupSubmitResult {
   return { status: 'complete' };
 }
 
@@ -371,7 +366,7 @@ async function onSetupSubmit(_args: {
 // Options system
 // ---------------------------------------------------------------------------
 
-async function onListOptions(): Promise<{ options: SkillOption[] }> {
+function onListOptions(): { options: SkillOption[] } {
   const s = getGmailSkillState();
 
   return {
@@ -416,13 +411,13 @@ async function onListOptions(): Promise<{ options: SkillOption[] }> {
         name: 'showSensitiveMessages',
         type: 'boolean',
         label: 'Show Sensitive Messages',
-        value: s.config.showSensitiveMessages ?? false,
+        value: s.config.showSensitiveMessages || false,
       },
     ],
   };
 }
 
-async function onSetOption(args: { name: string; value: unknown }): Promise<void> {
+function onSetOption(args: { name: string; value: unknown }): void {
   const s = getGmailSkillState();
   const connected = isGmailConnected();
 
@@ -447,7 +442,7 @@ async function onSetOption(args: { name: string; value: unknown }): Promise<void
       break;
 
     case 'maxEmailsPerSync':
-      s.config.maxEmailsPerSync = parseInt(args.value as string, 100);
+      s.config.maxEmailsPerSync = parseInt(args.value as string, 10);
       break;
 
     case 'notifyOnNewEmails':

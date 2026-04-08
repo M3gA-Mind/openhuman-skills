@@ -19,18 +19,18 @@ export const getLabelsTool: ToolDefinition = {
     },
     required: [],
   },
-  async execute(args: Record<string, unknown>): Promise<string> {
+  execute(args: Record<string, unknown>): string {
     try {
       const typeFilter = (args.type as string) || 'all';
       const includeHidden = args.include_hidden === true;
 
       // Get labels from Gmail API
-      const response = await gmailFetch<{ labels: any[] }>('/users/me/labels');
+      const response = gmailFetch<{ labels: any[] }>('/users/me/labels');
 
       if (!response.success) {
         return JSON.stringify({
           success: false,
-          error: response.error?.message || 'Failed to fetch labels',
+          error: (response.error ? response.error.message : null) || 'Failed to fetch labels',
         });
       }
 

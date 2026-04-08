@@ -17,7 +17,16 @@ function buildListParams(args: Record<string, unknown>): string[] {
     });
   }
   const maxResults = Math.min(
-    parseInt(String(args.max_results ?? args.maxResults ?? 20), 10) || 20,
+    parseInt(
+      String(
+        args.max_results !== null && args.max_results !== undefined
+          ? args.max_results
+          : args.maxResults !== null && args.maxResults !== undefined
+            ? args.maxResults
+            : 20
+      ),
+      10
+    ) || 20,
     100
   );
   params.push(`maxResults=${maxResults}`);
@@ -31,26 +40,32 @@ function buildListParams(args: Record<string, unknown>): string[] {
 }
 
 function hasAttachments(message: any): boolean {
-  if (message.payload?.body?.attachmentId) return true;
-  if (message.payload?.parts) {
+  if (message.payload && message.payload.body && message.payload.body.attachmentId) return true;
+  if (message.payload && message.payload.parts) {
     return message.payload.parts.some(
-      (part: any) => part.body?.attachmentId || (part.filename && part.filename.length > 0)
+      (part: any) =>
+        (part.body && part.body.attachmentId) || (part.filename && part.filename.length > 0)
     );
   }
   return false;
 }
 
 function messageToEmailRow(message: any): Record<string, unknown> {
-  const headers = message.payload?.headers || [];
-  const getHeader = (name: string) =>
-    headers.find((h: { name: string }) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+  const headers = (message.payload && message.payload.headers) || [];
+  const getHeader = (name: string) => {
+    const found = headers.find(
+      (h: { name: string }) => h.name.toLowerCase() === name.toLowerCase()
+    );
+    return (found ? found.value : '') || '';
+  };
   const subject = getHeader('Subject');
   const from = getHeader('From');
   const to = getHeader('To');
   const date = getHeader('Date');
   const fromMatch = from.match(/(.+?)\s*<([^>]+)>/) || [null, from, from];
-  const senderName = (fromMatch[1]?.trim()?.replace(/^["']|["']$/g, '') as string) || null;
-  const senderEmail = (fromMatch[2]?.trim() as string) || from;
+  const senderName =
+    ((fromMatch[1] ? fromMatch[1].trim().replace(/^["']|["']$/g, '') : null) as string) || null;
+  const senderEmail = ((fromMatch[2] ? fromMatch[2].trim() : null) as string) || from;
 
   return {
     id: message.id,
@@ -63,9 +78,9 @@ function messageToEmailRow(message: any): Record<string, unknown> {
       : new Date(parseInt(message.internalDate, 10)).toISOString(),
     snippet: message.snippet,
     label_ids: message.labelIds || [],
-    is_read: !message.labelIds?.includes('UNREAD'),
-    is_important: message.labelIds?.includes('IMPORTANT'),
-    is_starred: message.labelIds?.includes('STARRED'),
+    is_read: !(message.labelIds && message.labelIds.includes('UNREAD')),
+    is_important: message.labelIds && message.labelIds.includes('IMPORTANT'),
+    is_starred: message.labelIds && message.labelIds.includes('STARRED'),
     has_attachments: hasAttachments(message),
     size_estimate: message.sizeEstimate || 0,
   };
@@ -114,7 +129,7 @@ export const getEmailsTool: ToolDefinition = {
     },
     required: [],
   },
-  async execute(args: Record<string, unknown>): Promise<string> {
+  execute(args: Record<string, unknown>): string {
     const params = buildListParams(args);
     const listEndpoint = `/users/me/messages?${params.join('&')}`;
 
@@ -122,12 +137,13 @@ export const getEmailsTool: ToolDefinition = {
       messages?: Array<{ id: string; threadId: string }>;
       nextPageToken?: string;
       resultSizeEstimate: number;
-    }> = await gmailFetch(listEndpoint);
+    }> = gmailFetch(listEndpoint);
 
     if (!listResponse.success) {
       return JSON.stringify({
         success: false,
-        error: listResponse.error?.message || 'Failed to fetch email list',
+        error:
+          (listResponse.error ? listResponse.error.message : null) || 'Failed to fetch email list',
       });
     }
 
@@ -141,7 +157,10 @@ export const getEmailsTool: ToolDefinition = {
       return JSON.stringify({
         success: true,
         emails: [],
-        total_count: messageList.resultSizeEstimate ?? 0,
+        total_count:
+          messageList.resultSizeEstimate !== null && messageList.resultSizeEstimate !== undefined
+            ? messageList.resultSizeEstimate
+            : 0,
         next_page_token: messageList.nextPageToken || null,
         query: args.query || null,
         label_ids: args.label_ids || null,
@@ -156,12 +175,10 @@ export const getEmailsTool: ToolDefinition = {
 
     for (let i = 0; i < refs.length; i += CONCURRENCY) {
       const batch = refs.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(
-        batch.map(msgRef => {
-          const msgEndpoint = `/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`;
-          return gmailFetch<GmailMessage>(msgEndpoint);
-        })
-      );
+      const results = batch.map(msgRef => {
+        const msgEndpoint = `/users/me/messages/${msgRef.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`;
+        return gmailFetch<GmailMessage>(msgEndpoint);
+      });
       for (const msgResponse of results) {
         if (msgResponse.success && msgResponse.data) {
           const message = msgResponse.data as any;
@@ -172,7 +189,10 @@ export const getEmailsTool: ToolDefinition = {
     }
 
     const s = getGmailSkillState();
-    const showSensitive = s.config.showSensitiveMessages ?? false;
+    const showSensitive =
+      s.config.showSensitiveMessages !== null && s.config.showSensitiveMessages !== undefined
+        ? s.config.showSensitiveMessages
+        : false;
     const filteredEmails = showSensitive
       ? emails
       : emails.filter(
@@ -183,7 +203,10 @@ export const getEmailsTool: ToolDefinition = {
     return JSON.stringify({
       success: true,
       emails: filteredEmails,
-      total_count: messageList.resultSizeEstimate ?? 0,
+      total_count:
+        messageList.resultSizeEstimate !== null && messageList.resultSizeEstimate !== undefined
+          ? messageList.resultSizeEstimate
+          : 0,
       next_page_token: messageList.nextPageToken || null,
       query: args.query || null,
       label_ids: args.label_ids || null,

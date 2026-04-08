@@ -18,19 +18,15 @@ const DEFAULT_BACKOFF_MS = 5_000;
  */
 const CLOUDFLARE_RETRYABLE = new Set([520, 521, 522, 523, 524, 525, 526, 527]);
 
-/** Notion API version constants */
-const LEGACY_API_VERSION = '2022-06-28';
-const CURRENT_API_VERSION = '2025-09-03';
+/** Notion API version — hardcoded to latest. */
+export const NOTION_API_VERSION = '2026-03-11';
 
-/** Cached API version preference.
- *  Default to current (2025-09-03) — the backend proxy hardcodes this version
- *  in its forwarded headers. The working backend live-test confirms all endpoints
- *  work correctly with it (data_source filter, etc.). */
-let cachedApiVersion: string | null = CURRENT_API_VERSION;
-
-/** Async sleep for backoff waits. */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+/** Synchronous busy-wait sleep for backoff waits. */
+function sleep(ms: number): void {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    // busy wait — QuickJS has no sync sleep primitive
+  }
 }
 
 /**
@@ -47,7 +43,7 @@ export function getNotionAuth(): { type: 'token'; token: string } | { type: 'pro
   const authCred = auth.getCredential();
   if (authCred && authCred.mode !== 'managed') {
     const creds = authCred.credentials;
-    const token = (creds.api_token ?? creds.content ?? creds.access_token) as string | undefined;
+    const token = (creds.api_token || creds.content || creds.access_token) as string | undefined;
     if (token) {
       return { type: 'token', token };
     }
@@ -70,18 +66,16 @@ export function isNotionConnected(): boolean {
   return getNotionAuth() !== null;
 }
 
-export async function notionFetch<T>(
+export function notionFetch<T>(
   endpoint: string,
-  options: { method?: string; body?: unknown; apiVersion?: string } = {}
-): Promise<T> {
+  options: { method?: string; body?: unknown } = {}
+): T {
   const notionAuth = getNotionAuth();
   if (!notionAuth) throw new Error('Notion not connected. Please complete setup first.');
 
   const method = options.method || 'GET';
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-
-  // Use provided API version or detect/cache the best version
-  const apiVersion = options.apiVersion || (await detectApiVersion());
+  const apiVersion = NOTION_API_VERSION;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     let response: { status: number; headers: Record<string, string>; body: string };
@@ -92,7 +86,7 @@ export async function notionFetch<T>(
       // Direct Notion API call with token (self_hosted API token or OAuth accessToken)
       const url = `https://api.notion.com/v1${path}`;
       console.log(`[notion][fetch] ${method} ${url} (direct, attempt ${attempt})`);
-      response = await net.fetch(url, {
+      response = net.fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${notionAuth.token}`,
@@ -106,7 +100,7 @@ export async function notionFetch<T>(
       // Server-side OAuth proxy — the proxy validates against an allowlist of
       // full paths (e.g. /v1/users, /v1/search), so we must include the /v1 prefix.
       console.log(`[notion][fetch] ${method} /v1${path} (proxy, attempt ${attempt})`);
-      response = await oauth.fetch(`/v1${path}`, {
+      response = oauth.fetch(`/v1${path}`, {
         method,
         headers: { 'Content-Type': 'application/json', 'Notion-Version': apiVersion },
         body: options.body ? JSON.stringify(options.body) : undefined,
@@ -129,7 +123,7 @@ export async function notionFetch<T>(
       console.warn(
         `[notion][helpers] 429 rate-limited — waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
       );
-      await sleep(waitMs);
+      sleep(waitMs);
       continue;
     }
 
@@ -139,7 +133,7 @@ export async function notionFetch<T>(
       console.warn(
         `[notion][helpers] Cloudflare ${response.status} (transient) — waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
       );
-      await sleep(waitMs);
+      sleep(waitMs);
       continue;
     }
 
@@ -235,7 +229,7 @@ export function formatPageSummary(page: Record<string, unknown>): Record<string,
     created_time: page.created_time,
     last_edited_time: page.last_edited_time,
     archived: page.archived,
-    parent_type: (page.parent as Record<string, unknown>)?.type,
+    parent_type: page.parent ? (page.parent as Record<string, unknown>).type : undefined,
   };
 }
 
@@ -289,9 +283,11 @@ export function formatUserSummary(user: Record<string, unknown>): Record<string,
   // For bot-type users, drill into bot.owner.user.person to get the human owner info
   if (userType === 'bot') {
     const bot = user.bot as Record<string, unknown> | undefined;
-    const owner = bot?.owner as Record<string, unknown> | undefined;
-    const ownerUser = owner?.user as Record<string, unknown> | undefined;
-    const ownerPerson = ownerUser?.person as Record<string, unknown> | undefined;
+    const owner = (bot ? bot.owner : undefined) as Record<string, unknown> | undefined;
+    const ownerUser = (owner ? owner.user : undefined) as Record<string, unknown> | undefined;
+    const ownerPerson = (ownerUser ? ownerUser.person : undefined) as
+      | Record<string, unknown>
+      | undefined;
 
     if (ownerUser) {
       id = (ownerUser.id as string) || id;
@@ -304,15 +300,15 @@ export function formatUserSummary(user: Record<string, unknown>): Record<string,
     }
   } else {
     const person = user.person as Record<string, unknown> | undefined;
-    email = (person?.email as string) || (user.email as string | undefined);
+    email = ((person ? person.email : undefined) as string) || (user.email as string | undefined);
   }
 
   return {
     id,
-    name: name ?? null,
-    email: email ?? null,
-    type: userType ?? null,
-    avatar_url: avatarUrl ?? null,
+    name: name !== null && name !== undefined ? name : null,
+    email: email !== null && email !== undefined ? email : null,
+    type: userType !== null && userType !== undefined ? userType : null,
+    avatar_url: avatarUrl !== null && avatarUrl !== undefined ? avatarUrl : null,
   };
 }
 
@@ -342,7 +338,7 @@ export function buildParagraphBlock(text: string): Record<string, unknown> {
  * Recursively fetch block children and extract plain text content.
  * Used by the sync engine to populate page content_text.
  */
-export async function fetchBlockTreeText(blockId: string, maxDepth: number = 2): Promise<string> {
+export function fetchBlockTreeText(blockId: string, maxDepth: number = 2): string {
   if (maxDepth < 0) return '';
 
   const lines: string[] = [];
@@ -354,26 +350,22 @@ export async function fetchBlockTreeText(blockId: string, maxDepth: number = 2):
 
     let result: { results: Record<string, unknown>[]; has_more: boolean; next_cursor?: string };
     try {
-      result = (await notionFetch(endpoint)) as typeof result;
+      result = notionFetch(endpoint) as typeof result;
     } catch {
-      // If we can't fetch children (permissions, deleted, etc.), skip
       break;
     }
 
     for (const block of result.results) {
       const text = formatBlockContent(block);
-      // Only include blocks that have meaningful text
       if (text && !text.startsWith('[') && !text.endsWith(']')) {
         lines.push(text);
       } else if (text && text !== `[${block.type as string}]`) {
-        // Include non-empty typed blocks (e.g. "[empty paragraph]" is skipped)
         const cleaned = text.replace(/^\[empty .*\]$/, '').trim();
         if (cleaned) lines.push(cleaned);
       }
 
-      // Recurse into children if the block has them and we have depth budget
       if (block.has_children && maxDepth > 0) {
-        const childText = await fetchBlockTreeText(block.id as string, maxDepth - 1);
+        const childText = fetchBlockTreeText(block.id as string, maxDepth - 1);
         if (childText) lines.push(childText);
       }
     }
@@ -386,95 +378,20 @@ export async function fetchBlockTreeText(blockId: string, maxDepth: number = 2):
 }
 
 // ---------------------------------------------------------------------------
-// API Version Detection and Data Source Helpers
+// Data Source Helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Detect which Notion API version to use by attempting to call the current API.
- * Falls back to legacy version if the new API fails.
- * Caches the result to avoid repeated detection.
+ * Resolve a database ID to its data source ID.
+ * The current API uses data_sources for queries and schema access.
  */
-export async function detectApiVersion(): Promise<string> {
-  if (cachedApiVersion) {
-    return cachedApiVersion;
-  }
-
-  const notionAuth = getNotionAuth();
-  if (!notionAuth) {
-    // Default to legacy version if not authenticated
-    cachedApiVersion = LEGACY_API_VERSION;
-    return cachedApiVersion;
-  }
-
+export function resolveDataSourceId(databaseId: string): string {
   try {
-    // Try to make a simple request with the current API version
-    let response: { status: number; headers: Record<string, string>; body: string };
-
-    if (notionAuth.type === 'token') {
-      response = await net.fetch('https://api.notion.com/v1/users?page_size=1', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${notionAuth.token}`,
-          'Content-Type': 'application/json',
-          'Notion-Version': CURRENT_API_VERSION,
-        },
-        timeout: 10,
-      });
-    } else {
-      response = await oauth.fetch('/v1/users?page_size=1', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'Notion-Version': CURRENT_API_VERSION },
-        timeout: 10,
-      });
-    }
-
-    if (response.status < 400) {
-      cachedApiVersion = CURRENT_API_VERSION;
-      console.log(`[notion][helpers] Using API version: ${CURRENT_API_VERSION}`);
-    } else {
-      cachedApiVersion = LEGACY_API_VERSION;
-      console.log(`[notion][helpers] Falling back to API version: ${LEGACY_API_VERSION}`);
-    }
-  } catch (error) {
-    cachedApiVersion = LEGACY_API_VERSION;
-    console.log(
-      `[notion][helpers] Error detecting API version, using legacy: ${LEGACY_API_VERSION}`,
-      error
-    );
-  }
-
-  return cachedApiVersion;
-}
-
-/**
- * Reset the cached API version (useful for testing or when credentials change)
- */
-export function resetApiVersionCache(): void {
-  cachedApiVersion = null;
-}
-
-/**
- * Resolve a database ID to its data source ID for the new API.
- * Returns the original ID if it's already a data source ID or if using legacy API.
- * This handles backward compatibility during the API transition.
- */
-export async function resolveDataSourceId(databaseId: string): Promise<string> {
-  const apiVersion = await detectApiVersion();
-
-  // If using legacy API, return the original database ID
-  if (apiVersion === LEGACY_API_VERSION) {
-    return databaseId;
-  }
-
-  try {
-    // Try to get the database and extract data source ID
-    const response = await notionFetch<{ data_sources?: Array<{ id: string }>; id: string }>(
-      `/databases/${databaseId}`,
-      { apiVersion }
+    const response = notionFetch<{ data_sources?: Array<{ id: string }>; id: string }>(
+      `/databases/${databaseId}`
     );
 
     if (response.data_sources && response.data_sources.length > 0) {
-      // Use the first data source ID
       const dataSourceId = response.data_sources[0].id;
       console.log(
         `[notion][helpers] Resolved database ${databaseId} to data source ${dataSourceId}`
@@ -482,14 +399,8 @@ export async function resolveDataSourceId(databaseId: string): Promise<string> {
       return dataSourceId;
     }
 
-    // No data sources found, use original ID
-    console.log(
-      `[notion][helpers] No data sources found for database ${databaseId}, using original ID`
-    );
     return databaseId;
   } catch (error) {
-    // If the database call fails, the ID might already be a data source ID
-    // or the database doesn't exist. Return the original ID.
     console.log(
       `[notion][helpers] Error resolving data source for ${databaseId}, using original ID:`,
       error
@@ -499,25 +410,9 @@ export async function resolveDataSourceId(databaseId: string): Promise<string> {
 }
 
 /**
- * Get the appropriate query endpoint based on API version and ID type.
- * Returns the correct endpoint for database/data source queries.
+ * Get the query endpoint for a database — resolves to data_sources endpoint.
  */
-export async function getQueryEndpoint(databaseId: string): Promise<string> {
-  const apiVersion = await detectApiVersion();
-
-  if (apiVersion === LEGACY_API_VERSION) {
-    return `/databases/${databaseId}/query`;
-  }
-
-  // For new API, resolve to data source ID and use data sources endpoint
-  const dataSourceId = await resolveDataSourceId(databaseId);
+export function getQueryEndpoint(databaseId: string): string {
+  const dataSourceId = resolveDataSourceId(databaseId);
   return `/data_sources/${dataSourceId}/query`;
-}
-
-/**
- * Check if the current API version supports multi-source databases
- */
-export async function supportsMultiSourceDatabases(): Promise<boolean> {
-  const apiVersion = await detectApiVersion();
-  return apiVersion === CURRENT_API_VERSION;
 }
