@@ -592,9 +592,6 @@ var __skill_bundle = (() => {
   }
   const oauthCred = oauth.getCredential();
   if (oauthCred) {
-   if (oauthCred.accessToken) {
-    return { type: "token", token: oauthCred.accessToken };
-   }
    return { type: "proxy" };
   }
   return null;
@@ -626,8 +623,8 @@ var __skill_bundle = (() => {
      timeout: 30
     });
    } else {
-    console.log(`[notion][fetch] ${method} /v1${path} (proxy, attempt ${attempt})`);
-    response = oauth.fetch(`/v1${path}`, {
+    console.log(`[notion][fetch] ${method} ${path} (oauth.fetch proxy, attempt ${attempt})`);
+    response = oauth.fetch(path, {
      method,
      headers: { "Content-Type": "application/json", "Notion-Version": apiVersion },
      body: options.body ? JSON.stringify(options.body) : void 0,
