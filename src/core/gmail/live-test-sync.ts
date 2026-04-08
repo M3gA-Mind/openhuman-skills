@@ -6,12 +6,24 @@
  * Starts the skill, authenticates, triggers sync, and polls until done.
  * Similar to the Notion sync test — just an observer.
  *
+ * Credentials: set JWT_TOKEN + either encrypted OAuth (GMAIL_INTEGRATION_ID,
+ * GMAIL_CLIENT_KEY_SHARE) or self-hosted (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET,
+ * GMAIL_REFRESH_TOKEN), or run interactively (same flow as live-test.ts).
+ *
  * Usage:
  *   npx tsx src/core/gmail/live-test-sync.ts
+ *
+ * Core must see BACKEND_URL + JWT_TOKEN (same as this script). From openhuman-skills:
+ *   npm run serve:core -- --port 7788
+ * Or run `openhuman serve` from the openhuman repo with `.env` present (auto-loaded) or
+ * `OPENHUMAN_DOTENV_PATH` pointing at your `.env`.
  */
+import * as readline from 'readline';
+import { exec } from 'child_process';
 import 'dotenv/config';
 
 import {
+  authComplete,
   callToolRaw,
   getSkillStatus,
   oauthComplete,
@@ -90,17 +102,183 @@ function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
 }
 
 // ---------------------------------------------------------------------------
-// Config
+// Prompt (interactive credential resolution)
 // ---------------------------------------------------------------------------
 
-const INTEGRATION_ID = (process.env.GMAIL_INTEGRATION_ID || '').trim();
-const CLIENT_KEY = (process.env.GMAIL_CLIENT_KEY_SHARE || '').trim();
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-if (!process.env.JWT_TOKEN || !INTEGRATION_ID || !CLIENT_KEY) {
-  console.error(
-    `\n${C.red}  Missing env vars: JWT_TOKEN, GMAIL_INTEGRATION_ID, GMAIL_CLIENT_KEY_SHARE${C.reset}\n`
+function prompt(question: string, defaultValue?: string): Promise<string> {
+  const suffix = defaultValue ? ` ${C.dim}[${defaultValue}]${C.reset}` : '';
+  return new Promise(resolve => {
+    rl.question(`${C.yellow}  ? ${question}${suffix}: ${C.reset}`, answer => {
+      resolve(answer.trim() || defaultValue || '');
+    });
+  });
+}
+
+function promptSecret(question: string): Promise<string> {
+  return new Promise(resolve => {
+    process.stdout.write(`${C.yellow}  ? ${question}: ${C.reset}`);
+    const stdin = process.stdin;
+    const wasRaw = stdin.isRaw;
+    if (stdin.isTTY) stdin.setRawMode(true);
+    let input = '';
+    const onData = (ch: Buffer) => {
+      const c = ch.toString();
+      if (c === '\n' || c === '\r') {
+        if (stdin.isTTY) stdin.setRawMode(wasRaw ?? false);
+        stdin.removeListener('data', onData);
+        console.log();
+        resolve(input.trim());
+      } else if (c === '\x7f' || c === '\b') {
+        input = input.slice(0, -1);
+      } else if (c === '\x03') {
+        process.exit(1);
+      } else {
+        input += c;
+      }
+    };
+    stdin.on('data', onData);
+  });
+}
+
+function openUrl(url: string) {
+  const cmd =
+    process.platform === 'darwin'
+      ? `open "${url}"`
+      : process.platform === 'win32'
+        ? `start "${url}"`
+        : `xdg-open "${url}"`;
+  exec(cmd, err => {
+    if (err) console.warn(`${C.dim}    (could not open browser: ${err.message})${C.reset}`);
+  });
+}
+
+const GRANTED_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/gmail.labels',
+];
+
+type ResolvedCreds =
+  | { mode: 'encrypted_oauth'; integrationId: string; clientKeyShare: string }
+  | {
+      mode: 'self_hosted';
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+    };
+
+/** Resolve JWT (required), then OAuth env or interactive — mirrors live-test.ts */
+async function resolveCredentials(): Promise<ResolvedCreds> {
+  const jwt = (process.env.JWT_TOKEN || '').trim();
+  if (!jwt) {
+    console.error(`\n${C.red}  JWT_TOKEN env var is required.${C.reset}`);
+    console.error(
+      `${C.dim}  Usage: JWT_TOKEN=<jwt> npx tsx src/core/gmail/live-test-sync.ts${C.reset}\n`
+    );
+    process.exit(1);
+  }
+
+  const BACKEND_URL = (process.env.BACKEND_URL || 'https://api.tinyhumans.ai').replace(/\/+$/, '');
+  const ENV_AUTH_MODE = process.env.AUTH_MODE || '';
+  const ENV_INTEGRATION_ID = (process.env.GMAIL_INTEGRATION_ID || '').trim();
+  const ENV_CLIENT_KEY = (process.env.GMAIL_CLIENT_KEY_SHARE || '').trim();
+  const ENV_CLIENT_ID = (process.env.GMAIL_CLIENT_ID || '').trim();
+  const ENV_CLIENT_SECRET = (process.env.GMAIL_CLIENT_SECRET || '').trim();
+  const ENV_REFRESH_TOKEN = (process.env.GMAIL_REFRESH_TOKEN || '').trim();
+
+  const hasOAuthEnv = !!(ENV_INTEGRATION_ID && ENV_CLIENT_KEY);
+  const hasSelfHostedEnv = !!(ENV_CLIENT_ID && ENV_CLIENT_SECRET && ENV_REFRESH_TOKEN);
+
+  if (hasOAuthEnv || (ENV_AUTH_MODE === 'oauth' && hasOAuthEnv)) {
+    header('Credentials (from env)');
+    info('Mode', 'encrypted_oauth');
+    info('Integration ID', ENV_INTEGRATION_ID);
+    info('Client key', `<${ENV_CLIENT_KEY.length} chars>`);
+    return {
+      mode: 'encrypted_oauth',
+      integrationId: ENV_INTEGRATION_ID,
+      clientKeyShare: ENV_CLIENT_KEY,
+    };
+  }
+
+  if (hasSelfHostedEnv || ENV_AUTH_MODE === 'self_hosted') {
+    let clientId = ENV_CLIENT_ID;
+    let clientSecret = ENV_CLIENT_SECRET;
+    let refreshToken = ENV_REFRESH_TOKEN;
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      header('Credentials');
+      clientId = clientId || (await prompt('Google Client ID'));
+      clientSecret = clientSecret || (await promptSecret('Google Client Secret'));
+      refreshToken = refreshToken || (await promptSecret('Refresh Token'));
+      if (!clientId || !clientSecret || !refreshToken) {
+        console.error(`\n${C.red}  All three self-hosted fields are required.${C.reset}\n`);
+        process.exit(1);
+      }
+    } else {
+      header('Credentials (from env)');
+    }
+    info('Mode', 'self_hosted');
+    info('Client ID', `${clientId.slice(0, 12)}...`);
+    return { mode: 'self_hosted', clientId, clientSecret, refreshToken };
+  }
+
+  header('Authentication Mode');
+  const choice = await prompt(
+    'Auth mode — (1) Encrypted OAuth via browser  (2) Own OAuth credentials',
+    '1'
   );
-  process.exit(1);
+  const mode = choice === '2' ? 'self_hosted' : 'encrypted_oauth';
+
+  if (mode === 'self_hosted') {
+    const clientId = await prompt('Google Client ID');
+    const clientSecret = await promptSecret('Google Client Secret');
+    const refreshToken = await promptSecret('Refresh Token');
+    if (!clientId || !clientSecret || !refreshToken) {
+      console.error(`\n${C.red}  All three fields are required.${C.reset}\n`);
+      process.exit(1);
+    }
+    return { mode: 'self_hosted', clientId, clientSecret, refreshToken };
+  }
+
+  header('OAuth Flow (browser)');
+  step('Requesting OAuth URL from backend...');
+  const connectUrl = `${BACKEND_URL}/auth/gmail/connect?skillId=gmail&responseType=json&encryptionMode=encrypted`;
+  const connectResp = await fetch(connectUrl, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!connectResp.ok) {
+    const text = await connectResp.text();
+    console.log(`${C.red}✗ Backend returned ${connectResp.status}: ${text}${C.reset}`);
+    process.exit(1);
+  }
+  const connectData = (await connectResp.json()) as { oauthUrl?: string };
+  const oauthUrl = connectData.oauthUrl;
+  if (!oauthUrl) {
+    console.log(`${C.red}✗ No oauthUrl in response: ${JSON.stringify(connectData)}${C.reset}`);
+    process.exit(1);
+  }
+  ok();
+
+  console.log(`\n${C.yellow}  Opening Google OAuth page in your browser...${C.reset}`);
+  console.log(`${C.dim}  If it doesn't open, visit this URL manually:${C.reset}`);
+  console.log(`${C.dim}  ${oauthUrl}${C.reset}\n`);
+  openUrl(oauthUrl);
+
+  console.log(
+    `${C.yellow}  After authorizing, copy integrationId and clientKey from the JSON response.${C.reset}\n`
+  );
+
+  const integrationId = await prompt('Integration ID (24-char hex from callback)');
+  const clientKeyShare = await promptSecret('Client key share (base64 from callback)');
+  if (!integrationId || !clientKeyShare) {
+    console.error(`\n${C.red}  Integration ID and client key share are required.${C.reset}\n`);
+    process.exit(1);
+  }
+  return { mode: 'encrypted_oauth', integrationId, clientKeyShare };
 }
 
 // ---------------------------------------------------------------------------
@@ -109,6 +287,8 @@ if (!process.env.JWT_TOKEN || !INTEGRATION_ID || !CLIENT_KEY) {
 
 async function main() {
   console.log(`\n${C.bold}  Gmail Sync — Live Test${C.reset}`);
+
+  const creds = await resolveCredentials();
 
   // ── 1. Setup ──────────────────────────────────────────────────────────
 
@@ -127,20 +307,29 @@ async function main() {
   ok(`tools=${snap.tools.length} (${startMs}ms)`);
 
   step('OAuth...');
-  const [, oauthMs] = await timed(() =>
-    oauthComplete(SKILL_ID, {
-      credentialId: INTEGRATION_ID,
-      provider: 'gmail',
-      grantedScopes: [
-        'https://www.googleapis.com/auth/gmail.readonly',
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/gmail.modify',
-        'https://www.googleapis.com/auth/gmail.labels',
-      ],
-      clientKeyShare: CLIENT_KEY,
-    })
-  );
-  ok(`${oauthMs}ms`);
+  if (creds.mode === 'encrypted_oauth') {
+    const [, oauthMs] = await timed(() =>
+      oauthComplete(SKILL_ID, {
+        credentialId: creds.integrationId,
+        provider: 'gmail',
+        grantedScopes: GRANTED_SCOPES,
+        clientKeyShare: creds.clientKeyShare,
+      })
+    );
+    ok(`${oauthMs}ms`);
+  } else {
+    const [, oauthMs] = await timed(async () => {
+      const result = (await authComplete(SKILL_ID, 'self_hosted', {
+        client_id: creds.clientId,
+        client_secret: creds.clientSecret,
+        refresh_token: creds.refreshToken,
+      })) as { status?: string; errors?: unknown };
+      if (result.status !== 'complete') {
+        throw new Error(JSON.stringify(result.errors || result));
+      }
+    });
+    ok(`${oauthMs}ms`);
+  }
 
   step('Setup complete...');
   const [, setupMs] = await timed(() => setSetupComplete(SKILL_ID, true));

@@ -34,8 +34,8 @@ function sleep(ms: number): void {
  * or the legacy OAuth bridge.
  *
  * Returns:
- * - `{ type: 'token', token: string }` — direct API token (self_hosted or accessToken)
- * - `{ type: 'proxy' }` — use oauth.fetch() server-side proxy
+ * - `{ type: 'token', token: string }` — direct API token (self_hosted / advanced auth only)
+ * - `{ type: 'proxy' }` — managed OAuth: all requests via `oauth.fetch()` (same as Gmail skill)
  * - `null` — not connected
  */
 export function getNotionAuth(): { type: 'token'; token: string } | { type: 'proxy' } | null {
@@ -49,12 +49,10 @@ export function getNotionAuth(): { type: 'token'; token: string } | { type: 'pro
     }
   }
 
-  // Check OAuth bridge (managed mode or legacy)
+  // Managed OAuth: always use backend proxy — do not call api.notion.com with a bearer token
+  // from the skill (matches Gmail `gmailFetch` → `oauth.fetch` only).
   const oauthCred = oauth.getCredential();
   if (oauthCred) {
-    if (oauthCred.accessToken) {
-      return { type: 'token', token: oauthCred.accessToken as string };
-    }
     return { type: 'proxy' };
   }
 
@@ -83,7 +81,7 @@ export function notionFetch<T>(
     const t0 = Date.now();
 
     if (notionAuth.type === 'token') {
-      // Direct Notion API call with token (self_hosted API token or OAuth accessToken)
+      // Direct Notion API call with integration token (self_hosted only)
       const url = `https://api.notion.com/v1${path}`;
       console.log(`[notion][fetch] ${method} ${url} (direct, attempt ${attempt})`);
       response = net.fetch(url, {
@@ -97,10 +95,9 @@ export function notionFetch<T>(
         timeout: 30,
       });
     } else {
-      // Server-side OAuth proxy — the proxy validates against an allowlist of
-      // full paths (e.g. /v1/users, /v1/search), so we must include the /v1 prefix.
-      console.log(`[notion][fetch] ${method} /v1${path} (proxy, attempt ${attempt})`);
-      response = oauth.fetch(`/v1${path}`, {
+      // Path is relative to manifest `apiBaseUrl` (https://api.notion.com/v1), same as Gmail.
+      console.log(`[notion][fetch] ${method} ${path} (oauth.fetch proxy, attempt ${attempt})`);
+      response = oauth.fetch(path, {
         method,
         headers: { 'Content-Type': 'application/json', 'Notion-Version': apiVersion },
         body: options.body ? JSON.stringify(options.body) : undefined,
